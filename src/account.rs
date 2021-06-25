@@ -1,9 +1,11 @@
 use blake2b_simd::Params;
 use byteorder::{BigEndian, WriteBytesExt};
 
-use super::seed::Seed;
+use crate::seed::Seed;
 
 pub struct Account {
+    private_key: String,
+    public_key: String,
     address: String
 }
 
@@ -12,14 +14,16 @@ impl Account {
         let mut wtr = vec![];
         wtr.write_u32::<BigEndian>(index).unwrap();
         Account {
-            address: "nano_".to_string() + &Params::new()
-                .hash_length(32)
-                .to_state()
-                .update(&seed)
-                .update(&wtr)
-                .finalize()
-                .to_hex()
-                .to_string()
+            private_key: "nano_".to_string() + &Params::new()
+            .hash_length(32)
+            .to_state()
+            .update(&seed)
+            .update(&wtr)
+            .finalize()
+            .to_hex()
+            .to_string(),
+            public_key: String::new(),
+            address: String::new()
         }
     }
 
