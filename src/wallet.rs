@@ -1,8 +1,7 @@
-use super::seed::{Seed, seed_to_string};
-use super::account::Account;
-use super::pool::Pool;
-
-pub type Raw = u128;
+use crate::seed::{Seed, seed_to_string};
+use crate::account::Account;
+use crate::pool::Pool;
+use crate::unit::Raw;
 
 pub struct Wallet {
     seed: Seed,
@@ -28,6 +27,6 @@ impl Wallet {
     }
 
     pub fn await_payment(&self, amount: Raw) {
-        
+
     }
 }
