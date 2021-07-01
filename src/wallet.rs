@@ -1,7 +1,8 @@
-use crate::seed::{Seed, seed_to_string};
+use crate::seed::Seed;
 use crate::account::Account;
 use crate::pool::Pool;
 use crate::unit::Raw;
+use crate::common::bytes_to_hexstring;
 
 pub struct Wallet {
     seed: Seed,
@@ -19,11 +20,11 @@ impl Wallet {
     }
 
     pub fn seed(&self) -> String {
-        seed_to_string(self.seed)
+        bytes_to_hexstring(&self.seed)
     }
 
-    pub fn account(&self) -> String {
-        self.account.address()
+    pub fn account(&self) -> &Account {
+        &self.account
     }
 
     pub fn await_payment(&self, amount: Raw) {
