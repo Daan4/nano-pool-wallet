@@ -1,7 +1,7 @@
-# nano-payment-processor
+# nano-pool-wallet
 
-Nano currency payment processor proof of concept
+A nano wallet that consists of one main account and a pool of accounts used for making transactions.
 
-Work in progress
+Proof of concept, work in progress
 
 Also check out the Feeless project: https://github.com/feeless/feeless , which was a helpful resource for creating this project
