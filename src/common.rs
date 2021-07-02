@@ -1,7 +1,7 @@
 use bitvec::prelude::*;
 use once_cell::sync::Lazy;
 
-const HEX: [&str; 16] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"];
+const HEX: [&str; 16] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"];
 
 pub fn bytes_to_hexstring(bytes: &[u8]) -> String {     
     let mut buf = String::new();
