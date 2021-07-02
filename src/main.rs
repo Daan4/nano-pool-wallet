@@ -1,8 +1,9 @@
-use nano_pay::wallet::Wallet;
-use nano_pay::seed::generate_random_seed;
+use nano_pool::wallet::Wallet;
+use nano_pool::seed::generate_random_seed;
+use nano_pool::common::bytes_to_hexstring;
 
 fn main() {
-    //let seed = generate_random_seed();
+    println!("{}", bytes_to_hexstring(&generate_random_seed()));
     let seed = [0; 32];
     let w = Wallet::new(seed);
     println!("wallet seed: {}", w.seed());
