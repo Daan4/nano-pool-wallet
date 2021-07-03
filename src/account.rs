@@ -3,34 +3,118 @@ use byteorder::{BigEndian, WriteBytesExt};
 use ed25519_dalek::{PublicKey, SecretKey};
 use bitvec::prelude::*;
 use std::iter::FromIterator;
-use once_cell::sync::Lazy;
 
 use crate::seed::Seed;
-use crate::common::bytes_to_hexstring;
+use crate::unit::Raw;
+use crate::address::Address;
+use crate::common::{bytes_to_hexstring, encode_nano_base_32};
+use crate::communication::rpc::*;
 
 pub struct Account {
     seed: Seed,
+    index: u32,
     private_key: Hash,
     public_key: PublicKey,
-    address: String
+    address: String,
+    balance: Raw
 }
 
 impl Account {
     pub fn new(seed: Seed, index: u32) -> Account {
         // Derive private key from seed
+        let private_key = Account::derive_private_key(seed, index);
+
+        // Derive public key from private key
+        let public_key = Account::derive_public_key(private_key);
+        
+        // Derive address from public key
+        let address = Account::derive_address(public_key);
+
+        // Fetch initial balance
+        // Receives any pending balance as well if applicable
+        let (balance, pending) = Account::fetch_balance(&address);
+
+        let acc = Account {
+            seed,
+            index,
+            private_key,
+            public_key,
+            address,
+            balance
+        };
+
+        // If there is pending balance, receive it first
+        if pending > 0 {
+            acc.receive()
+        }
+
+        acc
+    }
+
+    /// Receive all pending balance
+    pub fn receive(&self) {
+        rpc_receive()
+    }
+
+    /// Send some amount of Raw to another nano address
+    pub fn send(&mut self, amount: Raw, destination: Address) -> Result<(), String> {
+        if self.balance < amount {
+            Err(format!("Account {} insufficient balance {} to send {}", self.address, self.balance, amount ))
+        } else {
+            self.balance -= amount;
+            Ok(())
+        }
+    }
+
+    /// Get the account seed as a string
+    pub fn seed(&self) -> String {
+        bytes_to_hexstring(&self.seed)
+    }
+
+    pub fn seed_as_bytes(&self) -> Seed {
+        self.seed
+    }
+
+    pub fn index(&self) -> u32 {
+        self.index
+    }
+
+    pub fn address(&self) -> String {
+        self.address.clone()
+    }
+
+    pub fn private_key(&self) -> String {
+        bytes_to_hexstring(self.private_key.as_bytes())
+    }
+
+    pub fn public_key(&self) -> String {
+        bytes_to_hexstring(self.public_key.as_bytes())
+    }
+
+    pub fn balance(&self) -> Raw {
+        self.balance
+    }
+
+    /// Derive private key from seed and index
+    fn derive_private_key(seed: Seed, index: u32) -> Hash {
         let mut wtr = vec![];
         wtr.write_u32::<BigEndian>(index).unwrap();
-        let private_key = Params::new()
+        Params::new()
             .hash_length(32)
             .to_state()
             .update(&seed)
             .update(&wtr)
-            .finalize();
+            .finalize()
+    }
 
-        // Derive public key from private key
-        let public_key = PublicKey::from(&SecretKey::from_bytes(private_key.as_bytes()).unwrap());
+    /// Derive public key from private key
+    fn derive_public_key(private_key: Hash) -> PublicKey {
+        PublicKey::from(&SecretKey::from_bytes(private_key.as_bytes()).unwrap())
+    }
 
-        // Derive address from public key
+    /// Derive address from public key
+    fn derive_address(public_key: PublicKey) -> String {
+
         // Code based on Feeless project implementation
         let mut address = String::with_capacity(65);
         address.push_str("nano_");
@@ -54,55 +138,13 @@ impl Account {
         let bits: BitVec<Msb0, u8> = BitVec::from_iter(result.as_bytes().iter().rev());
         let checksum = encode_nano_base_32(&bits);
         address.push_str(&checksum);
-
-        Account {
-            seed,
-            private_key,
-            public_key,
-            address
-        }
+        address
     }
 
-    pub fn seed(&self) -> String {
-        bytes_to_hexstring(&self.seed)
+    /// Fetch balance and pending balance for address
+    fn fetch_balance(address: &String) -> (Raw, Raw) {
+        rpc_account_balance(address)
     }
-
-    pub fn seed_as_bytes(&self) -> Seed {
-        self.seed
-    }
-
-    pub fn address(&self) -> String {
-        self.address.clone()
-    }
-
-    pub fn private_key(&self) -> String {
-        bytes_to_hexstring(self.private_key.as_bytes())
-    }
-
-    pub fn public_key(&self) -> String {
-        bytes_to_hexstring(self.public_key.as_bytes())
-    }
-}
-
-// Function based on Feeless project implementation
-const ALPHABET: &str = "13456789abcdefghijkmnopqrstuwxyz";
-static ALPHABET_VEC: Lazy<Vec<char>> = Lazy::new(|| ALPHABET.chars().collect());
-const ENCODING_BITS: usize = 5;
-
-pub fn encode_nano_base_32(bits: &BitSlice<Msb0, u8>) -> String {
-    debug_assert_eq!(
-        bits.len() % ENCODING_BITS,
-        0,
-        "BitSlice must be divisible by 5"
-    );
-    let mut s = String::new(); // TODO: with_capacity
-    for idx in (0..bits.len()).step_by(ENCODING_BITS) {
-        let chunk: &BitSlice<Msb0, u8> = &bits[idx..idx + ENCODING_BITS];
-        let value: u8 = chunk.load_be();
-        let char = ALPHABET_VEC[value as usize];
-        s.push(char);
-    }
-    s
 }
 
 #[cfg(test)]
