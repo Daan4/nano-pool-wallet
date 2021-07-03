@@ -10,6 +10,8 @@ Also check out the Feeless project: https://github.com/feeless/feeless , which w
 
 A nano currency wallet that consists of one main account and a pool of accounts. Pool accounts are used for transactions going in/out of the main account. A pool address is reserved for each specific transaction, either for a send of any amount, for a receive of any amount, or for a receive of a specific amount. Any unexpected balances found in pool accounts are automatically refunded to the sender.
 
+The main purpose of such a wallet is for identifying incoming transactions. By reserving a unique address for each one for the duration of the transaction the wallet owner will be able to tell which transaction is paid for (for example in the case where you are expecting two payments for two sales of the same amount). It adds some degree of obfuscation as a side effect but that is not the intended purpose.
+
 ## Sending
 
 The balance is sent from the main account to a free pool account. If no free pool account exists a new one will be generated. Then the balance is sent from the pool account to the destination address. Finally the pool account is freed to be used for other transactions.
