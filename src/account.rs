@@ -15,7 +15,7 @@ pub struct Account {
     index: u32,
     private_key: Hash,
     public_key: PublicKey,
-    address: String,
+    address: Address,
     balance: Raw
 }
 
@@ -79,7 +79,7 @@ impl Account {
         self.index
     }
 
-    pub fn address(&self) -> String {
+    pub fn address(&self) -> Address {
         self.address.clone()
     }
 
@@ -113,7 +113,7 @@ impl Account {
     }
 
     /// Derive address from public key
-    fn derive_address(public_key: PublicKey) -> String {
+    fn derive_address(public_key: PublicKey) -> Address {
 
         // Code based on Feeless project implementation
         let mut address = String::with_capacity(65);
@@ -142,7 +142,7 @@ impl Account {
     }
 
     /// Fetch balance and pending balance for address
-    fn fetch_balance(address: &String) -> (Raw, Raw) {
+    fn fetch_balance(address: &Address) -> (Raw, Raw) {
         rpc_account_balance(address)
     }
 }
