@@ -20,6 +20,9 @@ pub struct Account {
 }
 
 impl Account {
+    // Time in seconds before timing out whenever waiting for incoming funds
+    const TRANSACTION_TIMEOUT: usize = 30;
+
     pub fn new(seed: Seed, index: u32) -> Account {
         // Derive private key from seed
         let private_key = Account::derive_private_key(seed, index);
@@ -45,15 +48,21 @@ impl Account {
 
         // If there is pending balance, receive it first
         if pending > 0 {
-            acc.receive()
+            acc.receive_all()
         }
 
         acc
     }
 
     /// Receive all pending balance
-    pub fn receive(&self) {
+    fn receive_all(&self) {
         rpc_receive()
+    }
+
+    /// Receive a specific amount once (0 = any amount)
+    /// Times out if not received within TRANSACTION_TIMEOUT
+    pub fn receive_specific(&self, amount: Raw) -> Result<(), String> {
+        Ok(())
     }
 
     /// Send some amount of Raw to another nano address

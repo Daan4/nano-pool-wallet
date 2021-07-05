@@ -2,6 +2,7 @@ use crate::seed::Seed;
 use crate::account::Account;
 use crate::pool::Pool;
 use crate::unit::Raw;
+use crate::address::Address;
 use crate::common::bytes_to_hexstring;
 
 pub struct Wallet {
@@ -15,7 +16,7 @@ impl Wallet {
         Wallet {
             seed,
             account: Account::new(seed, 0),
-            pool: Pool::new(),
+            pool: Pool::new(seed),
         }
     }
 
@@ -27,7 +28,25 @@ impl Wallet {
         &self.account
     }
 
-    pub fn await_payment(&self, amount: Raw) {
+    /// Send an amount of nano from the wallet to a destination through the pool
+    pub fn send_payment(&mut self, amount: Raw, destination: Address) -> Result<(), String> {
+        if amount == 0 {
+            Err("Cannot send 0 raw".to_string())
+        } else if amount < self.account().balance() {
+            Err(format!("Cannot send {} raw because the main account only holds {} more than the main account balance", amount, self.account().balance()))
+        } else {
+            let mut pool_account = self.pool.get_account();
+            self.account.send(amount, pool_account.address())?;
+            pool_account.send(amount, destination)?;
+            Ok(())
+        }
+    }
 
+    /// Receive some amount of nano through the pool (0 = any amount). Returns the receive address that the payment should be sent to.
+    pub fn receive_payment(&mut self, amount: Raw) -> Result<(), String> {
+        let mut pool_account = self.pool.get_account();
+        pool_account.receive_specific(amount)?;
+        pool_account.send(amount, self.account.address())?;
+        Ok(())
     }
 }
