@@ -12,3 +12,4 @@ Cargo.lock
 /src/workspace.code-workspace
 
 TODO
+config/Config.toml
