@@ -62,6 +62,6 @@ impl Wallet {
 
     /// Receive all transactions coming directly to the main account
     pub fn receive_all_direct() {
-
+        
     }
 }
