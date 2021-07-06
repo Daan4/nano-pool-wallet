@@ -37,7 +37,7 @@ impl Account {
         // Receives any pending balance as well if applicable
         let (balance, pending) = Account::fetch_balance(&address);
 
-        let acc = Account {
+        let account = Account {
             seed,
             index,
             private_key,
@@ -48,10 +48,10 @@ impl Account {
 
         // If there is pending balance, receive it first
         if pending > 0 {
-            acc.receive_all()
+            account.receive_all()
         }
 
-        acc
+        account
     }
 
     /// Receive all pending balance
@@ -73,6 +73,11 @@ impl Account {
             self.balance -= amount;
             Ok(())
         }
+    }
+
+    /// Refund any remaining balance
+    pub fn refund(&self) {
+
     }
 
     /// Get the account seed as a string
@@ -152,7 +157,7 @@ impl Account {
 
     /// Fetch balance and pending balance for address
     fn fetch_balance(address: &Address) -> (Raw, Raw) {
-        rpc_account_balance(address)
+        rpc_account_balance(address).unwrap()
     }
 }
 
