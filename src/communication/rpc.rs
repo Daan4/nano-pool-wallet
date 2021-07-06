@@ -3,6 +3,7 @@ use curl::easy::Easy;
 use std::io::Read;
 use serde_derive::{Serialize, Deserialize};
 use serde_aux::prelude::*;
+use std::collections::HashMap;
 
 use crate::unit::Raw;
 use crate::address::Address;
@@ -61,10 +62,15 @@ struct JsonAccountsPendingMessage {
     action: String,
     accounts: Vec<Address>,
     count: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
     threshold: Option<Raw>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     source: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     include_active: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     sorting: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     include_only_confirmed: Option<bool>
 }
 
@@ -77,20 +83,59 @@ struct JsonAccountsPendingResponse {
 struct JsonBlock {
     #[serde(deserialize_with = "deserialize_number_from_string")]
     amount: Raw,
-    source: Option<String>
+    source: Option<Address>
 }
 
-// pub fn rpc_accounts_pending(addresses: &[Address], count: usize, threshold: Option<Raw>, source: Option<bool>, 
-//                             include_active: Option<bool>, sorting: Option<bool>, include_only_confirmed: Option<bool>) -> Result<(), String> {
-//     let message:
-    
-//     let response: JsonAccountsPendingResponse = serde_json::from_value(rpc(&message)?).unwrap();
-//     for account in response.blocks.keys() {
-//         let block: JsonBlocks = serde_json::from_value(response.blocks[account].clone()).unwrap();
-//     }
-//     println!("blocks {:?}", response.blocks);
-//     Ok(())
-// }
+struct PendingBlock {
+    hash: String,
+    amount: Option<Raw>,
+    source: Option<Address>
+}
+
+pub fn rpc_accounts_pending(addresses: Vec<Address>, count: usize, mut threshold: Option<Raw>, source: Option<bool>, 
+                            include_active: Option<bool>, sorting: Option<bool>, include_only_confirmed: Option<bool>) -> Result<(), String> {
+    // treat 0 threshold as None threshold
+    match threshold {
+        Some(value) if value == 0 => {
+            threshold = None;
+        },
+        _ => {}
+    }
+    let message = JsonAccountsPendingMessage {
+        action: "accounts_pending".to_owned(),
+        accounts: addresses,
+        count,
+        threshold,
+        source,
+        include_active,
+        sorting,
+        include_only_confirmed
+    };
+    let message = serde_json::to_value(message).unwrap();
+    let response: JsonAccountsPendingResponse = serde_json::from_value(rpc(&message)?).unwrap();
+    for account in response.blocks.keys() {
+        let value = 
+        match source {
+            Some(b) if b => {
+                // if source is included then we get the amount and source for each block hash
+                let blocks: HashMap<String, JsonBlock> = serde_json::from_value(response.blocks[account].clone()).unwrap();
+            },
+            _ => {
+                match threshold {
+                    Some(_) => {
+                        // if threshold is included then then we get the amount for each block hash
+                        let blocks: HashMap<String, String> = serde_json::from_value(response.blocks[account].clone()).unwrap();
+                    },
+                    _ => {
+                        // if neither threshold nor source is included we just get an array of blocks
+                        let blocks: Vec<String> = serde_json::from_value(response.blocks[account].clone()).unwrap();
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
 
 pub fn rpc_send() {
 
