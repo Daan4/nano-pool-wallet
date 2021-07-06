@@ -54,4 +54,14 @@ impl Wallet {
         self.pool.return_account(pool_account);
         Ok(())
     }
+
+    /// Send a transaction directly from the main account
+    pub fn send_direct() {
+        
+    }
+
+    /// Receive all transactions coming directly to the main account
+    pub fn receive_all_direct() {
+
+    }
 }
