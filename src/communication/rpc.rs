@@ -39,18 +39,18 @@ pub fn rpc_account_balance(address: &Address) -> Result<(Raw, Raw), String> {
     let response = rpc(&message)?;
 
     match (response["balance"].clone(), response["pending"].clone()) {
-        (Value::Number(balance), Value::Number(pending)) => {
-            match (balance.as_u64(), pending.as_u64()) {
-                (Some(balance), Some(pending)) => {
+        (Value::String(balance), Value::String(pending)) => {
+            match (balance.parse::<Raw>(), pending.parse::<Raw>()) {
+                (Ok(balance), Ok(pending)) => {
                     Ok((balance as Raw, pending as Raw))
                 },            
                 (_, _) => {        
-                    Err(format!("RPC invalid response {} to message {}", response, message))
+                    Err(format!("RPC error invalid fields in response {} to message {}", response, message))
             	}
             }
         },
         (_, _) => {
-            Err(format!("RPC invalid response {} to message {}", response, message))
+            Err(format!("RPC error invalid datatypes in response {} to message {}", response, message))
         }
     }
 }
