@@ -208,11 +208,11 @@ mod tests {
             "nano_1kaofq8fwo4e6s4afpbwbznj8d4exrg341i6r1anft6jzrchi3t9qxhqryqs"));
 
         for case in test_cases {
-            let w = Account::new(case.1, case.0);
-            assert_eq!(w.seed_as_bytes(), case.1);
-            assert_eq!(w.private_key(), case.2);
-            assert_eq!(w.public_key(), case.3);
-            assert_eq!(w.address(), case.4);
+            let private_key = Account::derive_private_key(case.1, case.0);
+            let public_key = Account::derive_public_key(private_key);
+            assert_eq!(bytes_to_hexstring(private_key.as_bytes()), case.2);
+            assert_eq!(bytes_to_hexstring(public_key.as_bytes()), case.3);
+            assert_eq!(Account::derive_address(public_key), case.4);
         }
     }
 }
