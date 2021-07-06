@@ -25,15 +25,19 @@ impl Pool {
         match self.free.pop_front() {
             Some(account) => account,
             None => {
-                let acc = Account::new(self.seed, self.index);
+                let account = Account::new(self.seed, self.index);
                 self.index += 1;
-                acc
+                account
             }
         }
     }
 
     /// Return a used account to the free pool after a transaction
+    /// If there is remaining balance on a pool account after a transaction it should be refunded
     pub fn return_account(&mut self, account: Account) {
+        if account.balance() > 0 {
+            account.refund();
+        }
         self.free.push_back(account)
     }
 }
