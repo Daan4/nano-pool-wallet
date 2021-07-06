@@ -27,5 +27,6 @@ fn main() {
     println!("wallet account address: {}", w.account().address());
     println!("wallet account balance: {}", w.account().balance());
 
-    //rpc_accounts_pending(&[w.account().address()], 0, true);
+    //rpc_accounts_pending(&[w.account().address()], 0, true).unwrap();
+    //rpc_accounts_pending(&[w.account().address()], 10000000000000000000000000000000000, false).unwrap();
 }
