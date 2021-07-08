@@ -86,14 +86,15 @@ struct JsonBlock {
     source: Option<Address>
 }
 
-struct PendingBlock {
+#[derive(Debug)]
+pub struct PendingBlock {
     hash: String,
     amount: Option<Raw>,
     source: Option<Address>
 }
 
 pub fn rpc_accounts_pending(addresses: Vec<Address>, count: usize, mut threshold: Option<Raw>, source: Option<bool>, 
-                            include_active: Option<bool>, sorting: Option<bool>, include_only_confirmed: Option<bool>) -> Result<(), String> {
+                            include_active: Option<bool>, sorting: Option<bool>, include_only_confirmed: Option<bool>) -> Result<HashMap<Address, Vec<PendingBlock>>, String> {
     // treat 0 threshold as None threshold
     match threshold {
         Some(value) if value == 0 => {
@@ -113,27 +114,40 @@ pub fn rpc_accounts_pending(addresses: Vec<Address>, count: usize, mut threshold
     };
     let message = serde_json::to_value(message).unwrap();
     let response: JsonAccountsPendingResponse = serde_json::from_value(rpc(&message)?).unwrap();
+    let mut output: HashMap<Address, Vec<PendingBlock>> = HashMap::new();
     for account in response.blocks.keys() {
+        let mut blocks: Vec<PendingBlock> = vec![];
         match source {
             Some(b) if b => {
                 // if source is included then we get the amount and source for each block hash
-                let blocks: HashMap<String, JsonBlock> = serde_json::from_value(response.blocks[account].clone()).unwrap();
+                let data: HashMap<String, JsonBlock> = serde_json::from_value(response.blocks[account].clone()).unwrap();
+                for (hash, block) in data {
+                    blocks.push(PendingBlock{hash, amount: Some(block.amount), source: block.source});
+                }
             },
             _ => {
                 match threshold {
                     Some(_) => {
                         // if threshold is included then then we get the amount for each block hash
-                        let blocks: HashMap<String, String> = serde_json::from_value(response.blocks[account].clone()).unwrap();
+                        let data: HashMap<String, String> = serde_json::from_value(response.blocks[account].clone()).unwrap();
+                        for (hash, amount) in data {
+                            let amount = amount.parse::<Raw>().unwrap();
+                            blocks.push(PendingBlock{hash, amount: Some(amount), source: None});
+                        }
                     },
                     _ => {
                         // if neither threshold nor source is included we just get an array of blocks
-                        let blocks: Vec<String> = serde_json::from_value(response.blocks[account].clone()).unwrap();
+                        let data: Vec<String> = serde_json::from_value(response.blocks[account].clone()).unwrap();
+                        for hash in data {
+                            blocks.push(PendingBlock{hash, amount: None, source: None});
+                        }
                     }
                 }
             }
         }
+        output.insert(account.to_owned(), blocks);
     }
-    Ok(())
+    Ok(output)
 }
 
 pub fn rpc_send() {

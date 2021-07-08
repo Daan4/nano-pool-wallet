@@ -27,7 +27,7 @@ fn main() {
     println!("wallet account address: {}", w.account().address());
     println!("wallet account balance: {}", w.account().balance());
 
-    rpc_accounts_pending(vec![w.account().address()], 1, None, None, None, None, Some(true)).unwrap();
-    rpc_accounts_pending(vec![w.account().address()], 1, Some(1), None, None, None, Some(true)).unwrap();
-    rpc_accounts_pending(vec![w.account().address()], 1, Some(0), Some(true), None, None, Some(true)).unwrap();
+    println!("{:?}", rpc_accounts_pending(vec![w.account().address()], 1, None, None, None, None, Some(true)).unwrap());
+    println!("{:?}", rpc_accounts_pending(vec![w.account().address()], 1, Some(1), None, None, None, Some(true)).unwrap());
+    println!("{:?}", rpc_accounts_pending(vec![w.account().address()], 1, Some(0), Some(true), None, None, Some(true)).unwrap());
 }
