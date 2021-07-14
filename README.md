@@ -30,6 +30,33 @@ A free pool account is reserved, if no free account exists a new one will be gen
 
 All pool accounts have their incoming balances monitored. If an unexpected balance is received it is immediately returned to the sender.
 
-## Setup
+## Quick Setup
+
+1. run nano node (set up work peer and enable rpc control)
+
+```bash
+sudo docker run --restart=unless-stopped -d \
+  -p 17075:17075 \
+  -p 17075:17075/udp \
+  -p 127.0.0.1:17076:17076 \
+  -p 127.0.0.1:17078:17078 \
+  -v ~/nano/test:/root \
+  --name nano-test \
+  nanocurrency/nano-test
+```
+
+2. run nano work server
+
+```powershell
+.\nano-work-server.exe --gpu 0:0 --listen-address <WSL ethernet adapter ip>:1000
+```
+
+3. set up config/Config.toml
+
+4. run program
+
+```bash
+cargo run
+```
 
 ## Run tests
