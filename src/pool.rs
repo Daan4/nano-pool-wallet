@@ -40,4 +40,11 @@ impl Pool {
         }
         self.free.push_back(account)
     }
+
+    /// Get the account adress at a given index
+    pub fn get_account_address(&self, index: u32) -> Address {
+        let private_key = Account::derive_private_key(self.seed, index);
+        let public_key = Account::derive_public_key(private_key);
+        Account::derive_address(public_key)
+    }
 }

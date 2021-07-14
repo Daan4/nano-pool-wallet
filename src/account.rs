@@ -155,7 +155,7 @@ impl Account {
     }
 
     /// Derive private key from seed and index
-    fn derive_private_key(seed: Seed, index: u32) -> Hash {
+    pub fn derive_private_key(seed: Seed, index: u32) -> Hash {
         let mut wtr = vec![];
         wtr.write_u32::<BigEndian>(index).unwrap();
         Params::new()
@@ -167,12 +167,12 @@ impl Account {
     }
 
     /// Derive public key from private key
-    fn derive_public_key(private_key: Hash) -> PublicKey {
+    pub fn derive_public_key(private_key: Hash) -> PublicKey {
         PublicKey::from(&SecretKey::from_bytes(private_key.as_bytes()).unwrap())
     }
 
     /// Derive address from public key
-    fn derive_address(public_key: PublicKey) -> Address {
+    pub fn derive_address(public_key: PublicKey) -> Address {
 
         // Code based on Feeless project implementation
         let mut address = String::with_capacity(65);
