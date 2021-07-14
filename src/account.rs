@@ -8,7 +8,8 @@ use crate::seed::Seed;
 use crate::unit::Raw;
 use crate::address::Address;
 use crate::common::{bytes_to_hexstring, encode_nano_base_32};
-use crate::communication::rpc::*;
+use crate::rpc::*;
+use crate::block::Block;
 
 pub struct Account {
     seed: Seed,
@@ -16,13 +17,18 @@ pub struct Account {
     private_key: Hash,
     public_key: PublicKey,
     address: Address,
-    balance: Raw
+    balance: Raw,
+    frontier: String,
+    open_block: String,
+    representative_block: String,
+    modified_timestamp: u64,
+    block_count: u128,
+    account_version: String,
+    confirmation_height: u128,
+    confirmation_height_frontier: String
 }
 
 impl Account {
-    // Time in seconds before timing out whenever waiting for incoming funds
-    const TRANSACTION_TIMEOUT: usize = 30;
-
     pub fn new(seed: Seed, index: u32) -> Account {
         // Derive private key from seed
         let private_key = Account::derive_private_key(seed, index);
@@ -37,13 +43,24 @@ impl Account {
         // Receives any pending balance as well if applicable
         let (balance, pending) = Account::fetch_balance(&address);
 
+        // Fetch account info
+        let account_info = Account::fetch_info(&address);
+
         let account = Account {
             seed,
             index,
             private_key,
             public_key,
             address,
-            balance
+            balance,
+            frontier: account_info.frontier,
+            open_block: account_info.open_block,
+            representative_block: account_info.representative_block,
+            modified_timestamp: account_info.modified_timestamp,
+            block_count: account_info.block_count,
+            account_version: account_info.account_version,
+            confirmation_height: account_info.confirmation_height,
+            confirmation_height_frontier: account_info.confirmation_height_frontier
         };
 
         // If there is pending balance, receive it first
@@ -54,9 +71,37 @@ impl Account {
         account
     }
 
-    /// Receive all pending balance
+    /// Receive all pending blocks
     fn receive_all(&self) {
-        rpc_receive()
+        let pending_blocks = rpc_accounts_pending(vec![self.address()], 1, Some(0), Some(true), None, None, Some(true)).unwrap();
+        for (address, pending_blocks) in pending_blocks {
+            for send_block in pending_blocks {
+                let block: Block;
+                match self.confirmation_height {
+                    0 => {
+                        block = rpc_block_create(
+                            "0".to_owned(),
+                            address.clone(),
+                            address.clone(),
+                            send_block.amount.unwrap(),
+                            send_block.hash,
+                            self.private_key()
+                        ).unwrap();
+                    },
+                    _ => {
+                        block = rpc_block_create(
+                            self.frontier.clone(),
+                            address.clone(),
+                            address.clone(),
+                            self.balance + send_block.amount.unwrap(),
+                            send_block.hash,
+                            self.private_key()
+                        ).unwrap();
+                    }
+                }
+                rpc_process(SUBTYPE::RECEIVE, block).unwrap();
+            }
+        }
     }
 
     /// Receive a specific amount once (0 = any amount)
@@ -158,6 +203,25 @@ impl Account {
     /// Fetch balance and pending balance for address
     fn fetch_balance(address: &Address) -> (Raw, Raw) {
         rpc_account_balance(address).unwrap()
+    }
+
+    /// Fetch account info
+    fn fetch_info(address: &Address) -> JsonAccountInfoResponse {
+        let response = rpc_account_info(&address.clone(), Some(true));
+        match response {
+            Ok(r) => r,
+            Err(_) => JsonAccountInfoResponse{
+                frontier: "".to_owned(),
+                open_block: "".to_owned(),
+                representative_block: "".to_owned(),
+                balance: 0,
+                modified_timestamp: 0,
+                block_count: 0,
+                account_version: "".to_owned(),
+                confirmation_height: 0,
+                confirmation_height_frontier: "".to_owned()
+            }
+        }
     }
 }
 

@@ -33,10 +33,10 @@ fn main() {
     // println!("{:?}", rpc_accounts_pending(vec![w.account().address()], 1, Some(1), None, None, None, Some(true)).unwrap());
     // println!("{:?}", rpc_accounts_pending(vec![w.account().address()], 1, Some(0), Some(true), None, None, Some(true)).unwrap());
 
-    let pending_blocks = rpc_accounts_pending(vec![w.account().address()], 1, None, None, None, None, Some(true)).unwrap();
-    for (address, blocks) in pending_blocks {
-        for block in blocks {
-            println!("{}", rpc_work_generate(block.hash, Some(true), None, None, None, None, None, None).unwrap());
-        }
-    }
+    // let pending_blocks = rpc_accounts_pending(vec![w.account().address()], 1, None, None, None, None, Some(true)).unwrap();
+    // for (address, blocks) in pending_blocks {
+    //     for block in blocks {
+    //         println!("{}", rpc_work_generate(block.hash, Some(true), None, None, None, None, None, None).unwrap());
+    //     }
+    // }
 }

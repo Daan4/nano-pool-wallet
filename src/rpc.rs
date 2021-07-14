@@ -16,7 +16,7 @@ pub enum SUBTYPE {
 }
 
 fn rpc(json: &Value) -> Result<Value, String> {
-    println!("RPC send {}", json);
+    println!("RPC send {}\n", json);
     let data = json.to_string();
     let mut data = data.as_bytes();
     let mut easy = Easy::new();
@@ -36,7 +36,7 @@ fn rpc(json: &Value) -> Result<Value, String> {
     drop(transfer);
     let dst = String::from_utf8(dst).unwrap();
     let dst: Value = serde_json::from_str(&dst).unwrap();
-    println!("RPC recv {}", dst);
+    println!("RPC recv {}\n", dst);
     Ok(dst)
 }
 
@@ -158,7 +158,7 @@ pub fn rpc_accounts_pending(addresses: Vec<Address>, count: usize, mut threshold
 }
 
 #[derive(Serialize)]
-struct JsonWorkGenerateMessage {
+struct JsonWorkGenerateMessage<'a>{
     action: String,
     hash: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -172,7 +172,7 @@ struct JsonWorkGenerateMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    block: Option<Block>,
+    block: Option<&'a Block>,
     #[serde(skip_serializing_if = "Option::is_none")]
     json_block: Option<bool>
 }
@@ -187,7 +187,7 @@ struct JsonWorkGenerateResponse {
 }
 
 pub fn rpc_work_generate(hash: String, use_peers: Option<bool>, difficulty: Option<String>, multiplier: Option<String>, 
-                         account: Option<Address>, version: Option<String>, block: Option<Block>, json_block: Option<bool>) -> Result<String, String> {
+                         account: Option<Address>, version: Option<String>, block: Option<&Block>, json_block: Option<bool>) -> Result<String, String> {
     let message = JsonWorkGenerateMessage {
         action: "work_generate".to_owned(),
         hash,
@@ -204,7 +204,119 @@ pub fn rpc_work_generate(hash: String, use_peers: Option<bool>, difficulty: Opti
     Ok(response.work)
 }
 
-pub fn rpc_process(subtype: SUBTYPE, block: Block) -> Result<(), String> {
+#[derive(Serialize)]
+struct JsonAccountInfoMessage {
+    action: String,
+    account: Address,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    include_confirmed: Option<bool>
+}
 
-    Ok(())
+#[derive(Deserialize)]
+pub struct JsonAccountInfoResponse {
+    pub frontier: String,
+    pub open_block: String,
+    pub representative_block: String,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub balance: Raw,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub modified_timestamp: u64,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub block_count: u128,
+    pub account_version: String,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub confirmation_height: u128,
+    pub confirmation_height_frontier: String
+}
+
+pub fn rpc_account_info(address: &Address, include_confirmed: Option<bool>) -> Result<JsonAccountInfoResponse, String> {
+    let message = JsonAccountInfoMessage {
+        action: "account_info".to_owned(),
+        account: address.to_owned(),
+        include_confirmed
+    };
+    let message = serde_json::to_value(message).unwrap();
+    let response = serde_json::from_value(rpc(&message)?);
+    match response {
+        Ok(r) => {
+            Ok(r)
+        },
+        Err(_) => {
+            Err("Account does not exist".to_owned())
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct JsonBlockCreateMessage {
+    action: String,
+    json_block: bool,
+    r#type: String,
+    previous: String,
+    account: String,
+    representative: String,
+    balance: String,
+    link: String,
+    key: String,
+}
+
+#[derive(Deserialize)]
+pub struct JsonBlockCreateResponse {
+    hash: String,
+    difficulty: String,
+    block: Block,
+}
+
+pub fn rpc_block_create(previous: String, account: Address, representative: Address, balance: Raw, link: String, key: String) -> Result<Block, String> {
+    let message = JsonBlockCreateMessage {
+        action: "block_create".to_owned(),
+        json_block: true,
+        r#type: "state".to_owned(),
+        previous,
+        account,
+        representative,
+        balance: balance.to_string(),
+        link,
+        key
+    };
+    let message = serde_json::to_value(message).unwrap();
+    let response: JsonBlockCreateResponse = serde_json::from_value(rpc(&message)?).unwrap();
+    Ok(response.block)
+}
+
+#[derive(Serialize)]
+struct JsonProcessMessage {
+    action: String,
+    json_block: bool,
+    subtype: String,
+    block: Block,
+}
+
+#[derive(Deserialize)]
+pub struct JsonProcessResponse {
+    hash: String,
+}
+
+pub fn rpc_process(subtype: SUBTYPE, block: Block) -> Result<String, String> {
+    let subtypestr: String;
+    match subtype {
+        SUBTYPE::CHANGE => {
+            subtypestr = "change".to_owned();
+        },
+        SUBTYPE::SEND => {
+            subtypestr = "send".to_owned();
+        },
+        SUBTYPE::RECEIVE => {
+            subtypestr = "receive".to_owned();
+        }
+    }
+    let message = JsonProcessMessage {
+        action: "process".to_owned(),
+        json_block: true,
+        subtype: subtypestr,
+        block
+    };
+    let message = serde_json::to_value(message).unwrap();
+    let response: JsonProcessResponse = serde_json::from_value(rpc(&message)?).unwrap();
+    Ok(response.hash)
 }
