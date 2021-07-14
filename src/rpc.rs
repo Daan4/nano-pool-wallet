@@ -7,6 +7,13 @@ use std::collections::HashMap;
 
 use crate::unit::Raw;
 use crate::address::Address;
+use crate::block::Block;
+
+pub enum SUBTYPE {
+    SEND,
+    RECEIVE,
+    CHANGE
+}
 
 fn rpc(json: &Value) -> Result<Value, String> {
     println!("RPC send {}", json);
@@ -25,7 +32,7 @@ fn rpc(json: &Value) -> Result<Value, String> {
         dst.extend_from_slice(data);
         Ok(data.len())
     }).unwrap();
-    transfer.perform().unwrap();
+    transfer.perform().expect("curl transfer failed");
     drop(transfer);
     let dst = String::from_utf8(dst).unwrap();
     let dst: Value = serde_json::from_str(&dst).unwrap();
@@ -88,9 +95,9 @@ struct JsonBlock {
 
 #[derive(Debug)]
 pub struct PendingBlock {
-    hash: String,
-    amount: Option<Raw>,
-    source: Option<Address>
+    pub hash: String,
+    pub amount: Option<Raw>,
+    pub source: Option<Address>
 }
 
 pub fn rpc_accounts_pending(addresses: Vec<Address>, count: usize, mut threshold: Option<Raw>, source: Option<bool>, 
@@ -150,10 +157,54 @@ pub fn rpc_accounts_pending(addresses: Vec<Address>, count: usize, mut threshold
     Ok(output)
 }
 
-pub fn rpc_send() {
-
+#[derive(Serialize)]
+struct JsonWorkGenerateMessage {
+    action: String,
+    hash: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    use_peers: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    difficulty: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    multiplier: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    account: Option<Address>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    block: Option<Block>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    json_block: Option<bool>
 }
 
-pub fn rpc_receive() {
+#[derive(Deserialize)]
+struct JsonWorkGenerateResponse {
+    work: String,
+    difficulty: String,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    multiplier: f64,
+    hash: String
+}
 
+pub fn rpc_work_generate(hash: String, use_peers: Option<bool>, difficulty: Option<String>, multiplier: Option<String>, 
+                         account: Option<Address>, version: Option<String>, block: Option<Block>, json_block: Option<bool>) -> Result<String, String> {
+    let message = JsonWorkGenerateMessage {
+        action: "work_generate".to_owned(),
+        hash,
+        use_peers,
+        difficulty,
+        multiplier,
+        account,
+        version,
+        block,
+        json_block
+    };
+    let message = serde_json::to_value(message).unwrap();
+    let response: JsonWorkGenerateResponse = serde_json::from_value(rpc(&message)?).unwrap();
+    Ok(response.work)
+}
+
+pub fn rpc_process(subtype: SUBTYPE, block: Block) -> Result<(), String> {
+
+    Ok(())
 }
