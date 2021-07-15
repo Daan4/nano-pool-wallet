@@ -2,6 +2,7 @@ use nano_pool::wallet::Wallet;
 use nano_pool::address::Address;
 use nano_pool::rpc::*;
 use nano_pool::common;
+use nano_pool::account::Account;
 
 use serde_derive::Deserialize;
 use std::fs;
@@ -19,7 +20,8 @@ fn main() {
 
     let config: Config = toml::from_str(&contents).unwrap();    
 
-    let w = Wallet::new(common::hexstring_to_bytes(&config.wallet_seed));
+    let seed = common::hexstring_to_bytes(&config.wallet_seed);
+    let mut w = Wallet::new(seed);
     
     // Wallet main account info
     // println!("wallet seed: {}", w.seed());
@@ -39,4 +41,9 @@ fn main() {
     //         println!("{}", rpc_work_generate(block.hash, Some(true), None, None, None, None, None, None).unwrap());
     //     }
     // }
+
+    let acc1 = Account::new(seed, 1);
+    w.send_direct(1, acc1.address());
+    acc1.receive_all();
+    // update balance on confirmation with websocket
 }

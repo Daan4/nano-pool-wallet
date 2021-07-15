@@ -3,6 +3,7 @@ use byteorder::{BigEndian, WriteBytesExt};
 use ed25519_dalek::{PublicKey, SecretKey};
 use bitvec::prelude::*;
 use std::iter::FromIterator;
+use serde_json;
 
 use crate::seed::Seed;
 use crate::unit::Raw;
@@ -19,13 +20,7 @@ pub struct Account {
     address: Address,
     balance: Raw,
     frontier: String,
-    open_block: String,
-    representative_block: String,
-    modified_timestamp: u64,
-    block_count: u128,
-    account_version: String,
-    confirmation_height: u128,
-    confirmation_height_frontier: String
+    confirmation_height: u64
 }
 
 impl Account {
@@ -39,9 +34,8 @@ impl Account {
         // Derive address from public key
         let address = Account::derive_address(public_key);
 
-        // Fetch initial balance
-        // Receives any pending balance as well if applicable
-        let (balance, pending) = Account::fetch_balance(&address);
+        // Fetch pending balance
+        let (_, pending) = Account::fetch_balance(&address);
 
         // Fetch account info
         let account_info = Account::fetch_info(&address);
@@ -52,15 +46,9 @@ impl Account {
             private_key,
             public_key,
             address,
-            balance,
-            frontier: account_info.frontier,
-            open_block: account_info.open_block,
-            representative_block: account_info.representative_block,
-            modified_timestamp: account_info.modified_timestamp,
-            block_count: account_info.block_count,
-            account_version: account_info.account_version,
-            confirmation_height: account_info.confirmation_height,
-            confirmation_height_frontier: account_info.confirmation_height_frontier
+            balance: account_info.confirmed_balance.unwrap().parse::<Raw>().unwrap(),
+            frontier: account_info.confirmed_frontier.unwrap(),
+            confirmation_height: account_info.confirmed_height.unwrap().parse::<u64>().unwrap()
         };
 
         // If there is pending balance, receive it first
@@ -72,17 +60,17 @@ impl Account {
     }
 
     /// Receive all pending blocks
-    fn receive_all(&self) {
+    pub fn receive_all(&self) {
         let pending_blocks = rpc_accounts_pending(vec![self.address()], 1, Some(0), Some(true), None, None, Some(true)).unwrap();
-        for (address, pending_blocks) in pending_blocks {
+        for (_, pending_blocks) in pending_blocks {
             for send_block in pending_blocks {
                 let block: Block;
                 match self.confirmation_height {
                     0 => {
                         block = rpc_block_create(
                             "0".to_owned(),
-                            address.clone(),
-                            address.clone(),
+                            self.address.clone(),
+                            self.address.clone(),
                             send_block.amount.unwrap(),
                             send_block.hash,
                             self.private_key()
@@ -91,8 +79,8 @@ impl Account {
                     _ => {
                         block = rpc_block_create(
                             self.frontier.clone(),
-                            address.clone(),
-                            address.clone(),
+                            self.address.clone(),
+                            self.address.clone(),
                             self.balance + send_block.amount.unwrap(),
                             send_block.hash,
                             self.private_key()
@@ -113,9 +101,17 @@ impl Account {
     /// Send some amount of Raw to another nano address
     pub fn send(&mut self, amount: Raw, destination: Address) -> Result<(), String> {
         if self.balance < amount {
-            Err(format!("Account {} insufficient balance {} to send {}", self.address, self.balance, amount ))
+            Err(format!("Account {} insufficient balance ({}) to send {}", self.address, self.balance, amount ))
         } else {
-            self.balance -= amount;
+            let block = rpc_block_create(
+                self.frontier.clone(),
+                self.address.clone(),
+                self.address.clone(),
+                self.balance - amount,
+                destination,
+                self.private_key()
+            ).unwrap();
+            rpc_process(SUBTYPE::SEND, block).unwrap();
             Ok(())
         }
     }
@@ -173,7 +169,6 @@ impl Account {
 
     /// Derive address from public key
     pub fn derive_address(public_key: PublicKey) -> Address {
-
         // Code based on Feeless project implementation
         let mut address = String::with_capacity(65);
         address.push_str("nano_");
@@ -205,22 +200,39 @@ impl Account {
         rpc_account_balance(address).unwrap()
     }
 
+    pub fn refresh_account_info(&mut self) {
+        // let account_info = Account::fetch_info(&self.address);
+        // self.frontier = account_info.confirmed_frontier.unwrap();
+        // self.open_block = account_info.open_block;
+        // self.representative_block = account_info.representative_block;
+        // self.balance = account_info.confirmed_balance.unwrap();
+        // self.modified_timestamp = account_info.modified_timestamp;
+        // self.block_count = account_info.block_count;
+        // self.account_version = account_info.account_version;
+        // self.confirmation_height = account_info.confirmed_height.unwrap()
+    }
+
     /// Fetch account info
     fn fetch_info(address: &Address) -> JsonAccountInfoResponse {
         let response = rpc_account_info(&address.clone(), Some(true));
         match response {
             Ok(r) => r,
-            Err(_) => JsonAccountInfoResponse{
-                frontier: "".to_owned(),
-                open_block: "".to_owned(),
-                representative_block: "".to_owned(),
-                balance: 0,
-                modified_timestamp: 0,
-                block_count: 0,
-                account_version: "".to_owned(),
-                confirmation_height: 0,
-                confirmation_height_frontier: "".to_owned()
-            }
+            Err(_) => {
+                JsonAccountInfoResponse{
+                    frontier: "".to_owned(),
+                    confirmed_frontier: Some("".to_owned()),
+                    open_block: "".to_owned(),
+                    representative_block: "".to_owned(),
+                    balance: 0,
+                    confirmed_balance: Some("0".to_owned()),
+                    modified_timestamp: 0,
+                    block_count: 0,
+                    account_version: "".to_owned(),
+                    confirmation_height: None,
+                    confirmed_height: Some("0".to_owned()),
+                    confirmation_height_frontier: None
+                }
+            }   
         }
     }
 }

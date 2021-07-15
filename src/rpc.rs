@@ -127,9 +127,17 @@ pub fn rpc_accounts_pending(addresses: Vec<Address>, count: usize, mut threshold
         match source {
             Some(b) if b => {
                 // if source is included then we get the amount and source for each block hash
-                let data: HashMap<String, JsonBlock> = serde_json::from_value(response.blocks[account].clone()).unwrap();
-                for (hash, block) in data {
-                    blocks.push(PendingBlock{hash, amount: Some(block.amount), source: block.source});
+                let data: Result<HashMap<String, JsonBlock>, serde_json::Error> = serde_json::from_value(response.blocks[account].clone());
+                match data {
+                    Ok(d) => {
+                        for (hash, block) in d {
+                            blocks.push(PendingBlock{hash, amount: Some(block.amount), source: block.source});
+                        }
+                    },
+                    Err(_) => {
+                        // no pending blocks for this account
+                        continue;
+                    }
                 }
             },
             _ => {
@@ -214,21 +222,28 @@ struct JsonAccountInfoMessage {
 
 #[derive(Deserialize)]
 pub struct JsonAccountInfoResponse {
-    pub frontier: String,
-    pub open_block: String,
-    pub representative_block: String,
+    pub frontier: String, 
+    pub confirmed_frontier: Option<String>, 
+    pub open_block: String, 
+    pub representative_block: String, 
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub balance: Raw,
+    pub balance: Raw, 
+    //#[serde(deserialize_with = "deserialize_option_number_from_string")] <-- deserialize_option_number_from_string is broken
+    pub confirmed_balance: Option<String>, 
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub modified_timestamp: u64,
+    pub modified_timestamp: u64, 
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub block_count: u128,
-    pub account_version: String,
-    #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub confirmation_height: u128,
-    pub confirmation_height_frontier: String
+    pub block_count: u64, 
+    pub account_version: String, 
+    // #[serde(deserialize_with = "deserialize_option_number_from_string")] <-- deserialize_option_number_from_string is broken
+    pub confirmation_height: Option<String>,
+    // #[serde(deserialize_with = "deserialize_option_number_from_string")] <-- deserialize_option_number_from_string is broken
+    pub confirmed_height: Option<String>, 
+    pub confirmation_height_frontier: Option<String>
 }
 
+// only includes confirmed, maybe support unconfirmed account info at some point?
+// support include confirmed and add those other fields as optional!!!
 pub fn rpc_account_info(address: &Address, include_confirmed: Option<bool>) -> Result<JsonAccountInfoResponse, String> {
     let message = JsonAccountInfoMessage {
         action: "account_info".to_owned(),
@@ -241,9 +256,7 @@ pub fn rpc_account_info(address: &Address, include_confirmed: Option<bool>) -> R
         Ok(r) => {
             Ok(r)
         },
-        Err(_) => {
-            Err("Account does not exist".to_owned())
-        }
+        Err(_) => Err("Account does not exist or malformed response".to_owned())
     }
 }
 

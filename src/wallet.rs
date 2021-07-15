@@ -28,6 +28,10 @@ impl Wallet {
         &self.account
     }
 
+    pub fn pool(&self) -> &Pool {
+        &self.pool
+    }
+
     /// Send an amount of nano from the wallet to a destination through the pool
     pub fn send_payment(&mut self, amount: Raw, destination: Address) -> Result<(), String> {
         if amount == 0 {
@@ -56,12 +60,12 @@ impl Wallet {
     }
 
     /// Send a transaction directly from the main account
-    pub fn send_direct() {
-        
+    pub fn send_direct(&mut self, amount: Raw, destination: Address) {
+        self.account.send(amount, destination).unwrap();
     }
 
     /// Receive all transactions coming directly to the main account
-    pub fn receive_all_direct() {
-        
+    pub fn receive_all_direct(&self) {
+        self.account.receive_all();
     }
 }
