@@ -24,10 +24,17 @@ impl WsClient {
     fn subscribe(&mut self, topic: String) -> Result<(), String> {
         let json = JsonSubscribeMessage {
             action: "subscribe".to_owned(),
+            ack: true,
             topic: topic.to_owned(),
         };
         self.send(serde_json::to_value(json).unwrap()).unwrap();
-        Ok(())
+        
+        let response: JsonSubscribeResponse = serde_json::from_value(self.recv().unwrap()).unwrap();
+        if response.ack == "subscribe".to_owned() {
+            Ok(())
+        } else {
+            Err("WS error, subscribe ack invalid".to_owned())
+        }
     }
 
     fn send(&mut self, json: Value) -> Result<(), String> {
@@ -55,7 +62,7 @@ impl WsClient {
     }
 
     pub fn run(&mut self) {
-        self.subscribe("confirmation".to_owned());
+        self.subscribe("confirmation".to_owned()).unwrap();
 
         loop {
             let message = self.recv();
@@ -66,10 +73,13 @@ impl WsClient {
 #[derive(Serialize, Deserialize)]
 struct JsonSubscribeMessage {
     action: String,
-    topic: String
+    topic: String,
+    ack: bool
 }
 
 #[derive(Deserialize)]
 struct JsonSubscribeResponse {
-    
+    ack: String,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    time: u64,
 }
