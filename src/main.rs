@@ -6,10 +6,8 @@ use nano_pool::wallet::Wallet;
 use nano_pool::ws::WsClient;
 
 use serde_derive::Deserialize;
-use serde_json::Value;
 use std::fs;
 use std::sync::mpsc;
-use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 
 #[derive(Deserialize)]
@@ -33,9 +31,9 @@ fn main() {
         rpc.run();
     });
 
-    let url = format!("{}:{}", config.node_address, config.node_ws_port);
+    let url = format!("ws://{}:{}", config.node_address, config.node_ws_port);
 
-    let ws = WsClient::new(url);
+    let mut ws = WsClient::new(url);
     thread::spawn(move || {
         ws.run();
     });
@@ -47,4 +45,6 @@ fn main() {
     w.send_direct(1, acc1.address());
     acc1.receive_all();
     // update balance on confirmation with websocket
+
+    loop {}
 }

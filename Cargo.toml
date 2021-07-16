@@ -18,6 +18,7 @@ toml = "0.5.8"
 serde = "1.0"
 serde_derive = "1.0"
 serde-aux = "2.2.0"
+websocket = "0.26.2"
 
 # This is a modified version of https://github.com/dalek-cryptography/ed25519-dalek
 # which hashes using blake2b instead of sha256.

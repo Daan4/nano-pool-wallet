@@ -7,11 +7,8 @@ node_address = "127.0.0.1"
 # node rpc port
 node_rpc_port = 17076
 
-# work server address
-work_address = "127.0.0.1"
-
-# work server port
-work_port = 1111
+# node websocket port
+node_ws_port = 17078
 
 # transaction timeout in seconds
 transaction_timeout = 300

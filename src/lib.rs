@@ -1,9 +1,12 @@
-pub mod wallet;
+mod macros;
+
 pub mod account;
-pub mod pool;
-pub mod seed;
 pub mod address;
-pub mod unit;
-pub mod common;
-pub mod rpc;
 pub mod block;
+pub mod common;
+pub mod pool;
+pub mod rpc;
+pub mod seed;
+pub mod unit;
+pub mod wallet;
+pub mod ws;
