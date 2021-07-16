@@ -1,22 +1,28 @@
+use std::sync::mpsc::{Sender, Receiver};
+use serde_json::Value;
+
 use crate::seed::Seed;
 use crate::account::Account;
 use crate::pool::Pool;
 use crate::unit::Raw;
 use crate::address::Address;
 use crate::common::bytes_to_hexstring;
+use crate::rpc::RpcCommand;
 
 pub struct Wallet {
     seed: Seed,
     account: Account,
     pool: Pool,
+    rpc_tx: Sender<RpcCommand>
 }
 
 impl Wallet {
-    pub fn new(seed: Seed) -> Wallet {
+    pub fn new(seed: Seed, rpc_tx: Sender<RpcCommand>) -> Wallet {
         Wallet {
             seed,
-            account: Account::new(seed, 0),
-            pool: Pool::new(seed),
+            account: Account::new(seed, 0, rpc_tx.clone()),
+            pool: Pool::new(seed, rpc_tx.clone()),
+            rpc_tx,
         }
     }
 

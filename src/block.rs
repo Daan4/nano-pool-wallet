@@ -3,10 +3,11 @@ use serde_aux::prelude::*;
 use ed25519_dalek::{PublicKey, SecretKey, ExpandedSecretKey};
 use ed25519_dalek::ed25519::signature::Signature as InternalSignature;
 use blake2b_simd::Hash;
+use std::sync::mpsc::Sender;
 
 use crate::address::Address;
 use crate::unit::Raw;
-use crate::rpc::rpc_work_generate;
+use crate::rpc::{rpc_work_generate, RpcCommand};
 use crate::common::{bytes_to_hexstring, hexstring_to_bytes};
 
 #[derive(Serialize, Deserialize)]
@@ -57,7 +58,7 @@ impl Block {
         // self.signature = Some(bytes_to_hexstring(internal_signed.as_bytes()));
     }
 
-    pub fn work(&mut self, hash: String) {
-        self.work = Some(rpc_work_generate(hash, Some(true), None, None, None, None, Some(self), Some(true)).unwrap());
+    pub fn work(&mut self, rpc_tx: Sender<RpcCommand>, hash: String) {
+        self.work = Some(rpc_work_generate(rpc_tx, hash, Some(true), None, None, None, None, Some(self), Some(true)).unwrap());
     }
 }

@@ -4,40 +4,101 @@ use std::io::Read;
 use serde_derive::{Serialize, Deserialize};
 use serde_aux::prelude::*;
 use std::collections::HashMap;
+use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc;
 
 use crate::unit::Raw;
 use crate::address::Address;
 use crate::block::Block;
 
+// abstract away the crazy receiver/sender stuff and use closure? to select an rpc function
+// rather write it as a trait and implement it for the message / response structs?
+// keep rpc_ functions and make them interact with RpcClient via RpcCommand somehow, theyll require a tx param
+// write the rpc_ functions as associated function of a struct implementing command trait and having the 2 way serialization?
+pub struct RpcCommand {
+    cmd: Value,
+    tx_response: Sender<Value>
+}
+
+impl RpcCommand {
+    pub fn new(cmd: Value, tx_response: Sender<Value>) -> Self {
+        Self {
+            cmd,
+            tx_response
+        }
+    }
+
+    pub fn json(&self) -> Value {
+        self.cmd.clone()
+    }
+
+    pub fn respond(&self, json: Value) -> Result<(), String> {
+        Ok(self.tx_response.send(json).unwrap())
+    }
+}
+
+pub struct RpcClient {
+    url: String,
+    rx: Receiver<RpcCommand>
+}
+
+macro_rules! skip_fail {
+    ($res:expr) => {
+        match $res {
+            Ok(val) => val,
+            Err(_) => {
+                continue;
+            }
+        }
+    };
+}
+
+impl RpcClient {
+    pub fn new(url: String, rx: Receiver<RpcCommand>) -> Self {
+        Self {
+            url,
+            rx
+        }
+    }
+
+    pub fn run(&self) {
+        loop {
+            let cmd = skip_fail!(self.rx.recv());
+            
+            let json = cmd.json();
+
+            println!("RPC send {}\n", json);
+            let data = json.to_string();
+            let mut data = data.as_bytes();
+            let mut easy = Easy::new();
+            easy.url(&self.url.clone()).unwrap();
+            easy.post(true).unwrap();
+            easy.post_field_size(data.len() as u64).unwrap();
+            let mut dst = Vec::new();
+
+            let mut transfer = easy.transfer();
+            transfer.read_function(|buf| {
+                Ok(data.read(buf).unwrap_or(0))
+            }).unwrap();
+            transfer.write_function(|data| {
+                dst.extend_from_slice(data);
+                Ok(data.len())
+            }).unwrap();
+
+            transfer.perform().expect("curl transfer failed");
+            drop(transfer);
+            let dst = String::from_utf8(dst).unwrap();
+            let dst: Value = serde_json::from_str(&dst).unwrap();
+            println!("RPC recv {}\n", dst);
+            cmd.respond(dst).unwrap();
+        }
+    }
+}
+
 pub enum SUBTYPE {
     SEND,
     RECEIVE,
     CHANGE
-}
-
-fn rpc(json: &Value) -> Result<Value, String> {
-    println!("RPC send {}\n", json);
-    let data = json.to_string();
-    let mut data = data.as_bytes();
-    let mut easy = Easy::new();
-    easy.url("127.0.0.1:17076").unwrap();
-    easy.post(true).unwrap();
-    easy.post_field_size(data.len() as u64).unwrap();
-    let mut dst = Vec::new();
-    let mut transfer = easy.transfer();
-    transfer.read_function(|buf| {
-        Ok(data.read(buf).unwrap_or(0))
-    }).unwrap();
-    transfer.write_function(|data| {
-        dst.extend_from_slice(data);
-        Ok(data.len())
-    }).unwrap();
-    transfer.perform().expect("curl transfer failed");
-    drop(transfer);
-    let dst = String::from_utf8(dst).unwrap();
-    let dst: Value = serde_json::from_str(&dst).unwrap();
-    println!("RPC recv {}\n", dst);
-    Ok(dst)
 }
 
 #[derive(Serialize)]
@@ -54,13 +115,16 @@ struct JsonAccountBalanceResponse {
     pending: Raw,
 }
 
-pub fn rpc_account_balance(address: &Address) -> Result<(Raw, Raw), String> {
+pub fn rpc_account_balance(rpc_tx: Sender<RpcCommand>, address: &Address) -> Result<(Raw, Raw), String> {
     let message = JsonAccountBalanceMessage {
         action: "account_balance".to_owned(),
         account: address.to_owned(),
     };
     let message = serde_json::to_value(message).unwrap();
-    let response: JsonAccountBalanceResponse = serde_json::from_value(rpc(&message)?).unwrap();
+    let (tx, rx) = mpsc::channel::<Value>();
+    let cmd = RpcCommand::new(message, tx);
+    rpc_tx.send(cmd).unwrap();
+    let response: JsonAccountBalanceResponse = serde_json::from_value(rx.recv().unwrap()).unwrap();
     Ok((response.balance, response.pending))
 }
 
@@ -100,7 +164,7 @@ pub struct PendingBlock {
     pub source: Option<Address>
 }
 
-pub fn rpc_accounts_pending(addresses: Vec<Address>, count: usize, mut threshold: Option<Raw>, source: Option<bool>, 
+pub fn rpc_accounts_pending(rpc_tx: Sender<RpcCommand>, addresses: Vec<Address>, count: usize, mut threshold: Option<Raw>, source: Option<bool>, 
                             include_active: Option<bool>, sorting: Option<bool>, include_only_confirmed: Option<bool>) -> Result<HashMap<Address, Vec<PendingBlock>>, String> {
     // treat 0 threshold as None threshold
     match threshold {
@@ -120,7 +184,10 @@ pub fn rpc_accounts_pending(addresses: Vec<Address>, count: usize, mut threshold
         include_only_confirmed
     };
     let message = serde_json::to_value(message).unwrap();
-    let response: JsonAccountsPendingResponse = serde_json::from_value(rpc(&message)?).unwrap();
+    let (tx, rx) = mpsc::channel::<Value>();
+    let cmd = RpcCommand::new(message, tx);
+    rpc_tx.send(cmd).unwrap();
+    let response: JsonAccountsPendingResponse = serde_json::from_value(rx.recv().unwrap()).unwrap();
     let mut output: HashMap<Address, Vec<PendingBlock>> = HashMap::new();
     for account in response.blocks.keys() {
         let mut blocks: Vec<PendingBlock> = vec![];
@@ -194,7 +261,7 @@ struct JsonWorkGenerateResponse {
     hash: String
 }
 
-pub fn rpc_work_generate(hash: String, use_peers: Option<bool>, difficulty: Option<String>, multiplier: Option<String>, 
+pub fn rpc_work_generate(rpc_tx: Sender<RpcCommand>, hash: String, use_peers: Option<bool>, difficulty: Option<String>, multiplier: Option<String>, 
                          account: Option<Address>, version: Option<String>, block: Option<&Block>, json_block: Option<bool>) -> Result<String, String> {
     let message = JsonWorkGenerateMessage {
         action: "work_generate".to_owned(),
@@ -208,7 +275,10 @@ pub fn rpc_work_generate(hash: String, use_peers: Option<bool>, difficulty: Opti
         json_block
     };
     let message = serde_json::to_value(message).unwrap();
-    let response: JsonWorkGenerateResponse = serde_json::from_value(rpc(&message)?).unwrap();
+    let (tx, rx) = mpsc::channel::<Value>();
+    let cmd = RpcCommand::new(message, tx);
+    rpc_tx.send(cmd).unwrap();
+    let response: JsonWorkGenerateResponse = serde_json::from_value(rx.recv().unwrap()).unwrap();
     Ok(response.work)
 }
 
@@ -244,14 +314,17 @@ pub struct JsonAccountInfoResponse {
 
 // only includes confirmed, maybe support unconfirmed account info at some point?
 // support include confirmed and add those other fields as optional!!!
-pub fn rpc_account_info(address: &Address, include_confirmed: Option<bool>) -> Result<JsonAccountInfoResponse, String> {
+pub fn rpc_account_info(rpc_tx: Sender<RpcCommand>, address: &Address, include_confirmed: Option<bool>) -> Result<JsonAccountInfoResponse, String> {
     let message = JsonAccountInfoMessage {
         action: "account_info".to_owned(),
         account: address.to_owned(),
         include_confirmed
     };
     let message = serde_json::to_value(message).unwrap();
-    let response = serde_json::from_value(rpc(&message)?);
+    let (tx, rx) = mpsc::channel::<Value>();
+    let cmd = RpcCommand::new(message, tx);
+    rpc_tx.send(cmd).unwrap();
+    let response = serde_json::from_value(rx.recv().unwrap());
     match response {
         Ok(r) => {
             Ok(r)
@@ -280,7 +353,7 @@ pub struct JsonBlockCreateResponse {
     block: Block,
 }
 
-pub fn rpc_block_create(previous: String, account: Address, representative: Address, balance: Raw, link: String, key: String) -> Result<Block, String> {
+pub fn rpc_block_create(rpc_tx: Sender<RpcCommand>, previous: String, account: Address, representative: Address, balance: Raw, link: String, key: String) -> Result<Block, String> {
     let message = JsonBlockCreateMessage {
         action: "block_create".to_owned(),
         json_block: true,
@@ -293,7 +366,10 @@ pub fn rpc_block_create(previous: String, account: Address, representative: Addr
         key
     };
     let message = serde_json::to_value(message).unwrap();
-    let response: JsonBlockCreateResponse = serde_json::from_value(rpc(&message)?).unwrap();
+    let (tx, rx) = mpsc::channel::<Value>();
+    let cmd = RpcCommand::new(message, tx);
+    rpc_tx.send(cmd).unwrap();
+    let response: JsonBlockCreateResponse = serde_json::from_value(rx.recv().unwrap()).unwrap();
     Ok(response.block)
 }
 
@@ -310,7 +386,7 @@ pub struct JsonProcessResponse {
     hash: String,
 }
 
-pub fn rpc_process(subtype: SUBTYPE, block: Block) -> Result<String, String> {
+pub fn rpc_process(rpc_tx: Sender<RpcCommand>, subtype: SUBTYPE, block: Block) -> Result<String, String> {
     let subtypestr: String;
     match subtype {
         SUBTYPE::CHANGE => {
@@ -330,6 +406,9 @@ pub fn rpc_process(subtype: SUBTYPE, block: Block) -> Result<String, String> {
         block
     };
     let message = serde_json::to_value(message).unwrap();
-    let response: JsonProcessResponse = serde_json::from_value(rpc(&message)?).unwrap();
+    let (tx, rx) = mpsc::channel::<Value>();
+    let cmd = RpcCommand::new(message, tx);
+    rpc_tx.send(cmd).unwrap();
+    let response: JsonProcessResponse = serde_json::from_value(rx.recv().unwrap()).unwrap();
     Ok(response.hash)
 }

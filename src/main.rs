@@ -1,17 +1,23 @@
 use nano_pool::wallet::Wallet;
 use nano_pool::address::Address;
-use nano_pool::rpc::*;
 use nano_pool::common;
 use nano_pool::account::Account;
+use nano_pool::rpc::{RpcClient, RpcCommand};
+use nano_pool::ws::WsClient;
 
 use serde_derive::Deserialize;
+use serde_json::Value;
 use std::fs;
+use std::thread;
+use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc;
 
 #[derive(Deserialize)]
 struct Config {
     wallet_seed: Address,
     node_address: String,
     node_rpc_port: u16,
+    node_ws_port: u16,
 }
 
 fn main() {
@@ -20,29 +26,24 @@ fn main() {
 
     let config: Config = toml::from_str(&contents).unwrap();    
 
-    let seed = common::hexstring_to_bytes(&config.wallet_seed);
-    let mut w = Wallet::new(seed);
+    let url = format!("{}:{}", config.node_address, config.node_rpc_port);
+    let (rpc_tx, rpc_rx) = mpsc::channel::<RpcCommand>();
+    let rpc = RpcClient::new(url, rpc_rx);
+    thread::spawn(move || {
+        rpc.run();
+    });
+
+    let url = format!("{}:{}", config.node_address, config.node_ws_port);
     
-    // Wallet main account info
-    // println!("wallet seed: {}", w.seed());
-    // println!("wallet account private key: {}", w.account().private_key());
-    // println!("wallet account public key: {}", w.account().public_key());
-    // println!("wallet account address: {}", w.account().address());
-    // println!("wallet account balance: {}", w.account().balance());
+    let ws = WsClient::new(url);
+    thread::spawn(move || {
+        ws.run();
+    });
 
-    // Testing rpc_accounts_pending
-    // println!("{:?}", rpc_accounts_pending(vec![w.account().address()], 1, None, None, None, None, Some(true)).unwrap());
-    // println!("{:?}", rpc_accounts_pending(vec![w.account().address()], 1, Some(1), None, None, None, Some(true)).unwrap());
-    // println!("{:?}", rpc_accounts_pending(vec![w.account().address()], 1, Some(0), Some(true), None, None, Some(true)).unwrap());
+    let seed = common::hexstring_to_bytes(&config.wallet_seed);
+    let mut w = Wallet::new(seed, rpc_tx.clone());
 
-    // let pending_blocks = rpc_accounts_pending(vec![w.account().address()], 1, None, None, None, None, Some(true)).unwrap();
-    // for (address, blocks) in pending_blocks {
-    //     for block in blocks {
-    //         println!("{}", rpc_work_generate(block.hash, Some(true), None, None, None, None, None, None).unwrap());
-    //     }
-    // }
-
-    let acc1 = Account::new(seed, 1);
+    let acc1 = Account::new(seed, 1, rpc_tx.clone());
     w.send_direct(1, acc1.address());
     acc1.receive_all();
     // update balance on confirmation with websocket

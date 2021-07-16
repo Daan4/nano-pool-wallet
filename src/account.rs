@@ -3,7 +3,8 @@ use byteorder::{BigEndian, WriteBytesExt};
 use ed25519_dalek::{PublicKey, SecretKey};
 use bitvec::prelude::*;
 use std::iter::FromIterator;
-use serde_json;
+use serde_json::Value;
+use std::sync::mpsc::{Sender, Receiver};
 
 use crate::seed::Seed;
 use crate::unit::Raw;
@@ -20,11 +21,12 @@ pub struct Account {
     address: Address,
     balance: Raw,
     frontier: String,
-    confirmation_height: u64
+    confirmation_height: u64,
+    rpc_tx: Sender<RpcCommand>
 }
 
 impl Account {
-    pub fn new(seed: Seed, index: u32) -> Account {
+    pub fn new(seed: Seed, index: u32, rpc_tx: Sender<RpcCommand>) -> Account {
         // Derive private key from seed
         let private_key = Account::derive_private_key(seed, index);
 
@@ -35,10 +37,10 @@ impl Account {
         let address = Account::derive_address(public_key);
 
         // Fetch pending balance
-        let (_, pending) = Account::fetch_balance(&address);
+        let (_, pending) = Account::fetch_balance( rpc_tx.clone(), &address);
 
         // Fetch account info
-        let account_info = Account::fetch_info(&address);
+        let account_info = Account::fetch_info(rpc_tx.clone(), &address);
 
         let account = Account {
             seed,
@@ -48,7 +50,8 @@ impl Account {
             address,
             balance: account_info.confirmed_balance.unwrap().parse::<Raw>().unwrap(),
             frontier: account_info.confirmed_frontier.unwrap(),
-            confirmation_height: account_info.confirmed_height.unwrap().parse::<u64>().unwrap()
+            confirmation_height: account_info.confirmed_height.unwrap().parse::<u64>().unwrap(),
+            rpc_tx: rpc_tx
         };
 
         // If there is pending balance, receive it first
@@ -61,13 +64,14 @@ impl Account {
 
     /// Receive all pending blocks
     pub fn receive_all(&self) {
-        let pending_blocks = rpc_accounts_pending(vec![self.address()], 1, Some(0), Some(true), None, None, Some(true)).unwrap();
+        let pending_blocks = rpc_accounts_pending(self.rpc_tx.clone(), vec![self.address()], 1, Some(0), Some(true), None, None, Some(true)).unwrap();
         for (_, pending_blocks) in pending_blocks {
             for send_block in pending_blocks {
                 let block: Block;
                 match self.confirmation_height {
                     0 => {
                         block = rpc_block_create(
+                            self.rpc_tx.clone(),
                             "0".to_owned(),
                             self.address.clone(),
                             self.address.clone(),
@@ -78,6 +82,7 @@ impl Account {
                     },
                     _ => {
                         block = rpc_block_create(
+                            self.rpc_tx.clone(),
                             self.frontier.clone(),
                             self.address.clone(),
                             self.address.clone(),
@@ -87,7 +92,7 @@ impl Account {
                         ).unwrap();
                     }
                 }
-                rpc_process(SUBTYPE::RECEIVE, block).unwrap();
+                rpc_process(self.rpc_tx.clone(), SUBTYPE::RECEIVE, block).unwrap();
             }
         }
     }
@@ -104,6 +109,7 @@ impl Account {
             Err(format!("Account {} insufficient balance ({}) to send {}", self.address, self.balance, amount ))
         } else {
             let block = rpc_block_create(
+                self.rpc_tx.clone(),
                 self.frontier.clone(),
                 self.address.clone(),
                 self.address.clone(),
@@ -111,7 +117,7 @@ impl Account {
                 destination,
                 self.private_key()
             ).unwrap();
-            rpc_process(SUBTYPE::SEND, block).unwrap();
+            rpc_process(self.rpc_tx.clone(), SUBTYPE::SEND, block).unwrap();
             Ok(())
         }
     }
@@ -196,8 +202,8 @@ impl Account {
     }
 
     /// Fetch balance and pending balance for address
-    fn fetch_balance(address: &Address) -> (Raw, Raw) {
-        rpc_account_balance(address).unwrap()
+    fn fetch_balance(rpc_tx: Sender<RpcCommand>, address: &Address) -> (Raw, Raw) {
+        rpc_account_balance(rpc_tx, address).unwrap()
     }
 
     pub fn refresh_account_info(&mut self) {
@@ -213,8 +219,8 @@ impl Account {
     }
 
     /// Fetch account info
-    fn fetch_info(address: &Address) -> JsonAccountInfoResponse {
-        let response = rpc_account_info(&address.clone(), Some(true));
+    fn fetch_info(rpc_tx: Sender<RpcCommand>, address: &Address) -> JsonAccountInfoResponse {
+        let response = rpc_account_info(rpc_tx, &address.clone(), Some(true));
         match response {
             Ok(r) => r,
             Err(_) => {

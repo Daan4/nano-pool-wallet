@@ -1,22 +1,26 @@
 use std::collections::VecDeque;
+use std::sync::mpsc::{Sender, Receiver};
+use serde_json::Value;
 
 use crate::account::Account;
 use crate::seed::Seed;
-use crate::unit::Raw;
 use crate::address::Address;
+use crate::rpc::RpcCommand;
 
 pub struct Pool {
     free: VecDeque<Account>,
     index: u32,
-    seed: Seed
+    seed: Seed,
+    rpc_tx: Sender<RpcCommand>,
 }
 
 impl Pool {
-    pub fn new(seed: Seed) -> Pool {
+    pub fn new(seed: Seed, rpc_tx: Sender<RpcCommand>) -> Pool {
         Pool {
             free: VecDeque::with_capacity(2^32-1),
             index: 0,
-            seed
+            seed,
+            rpc_tx
         }
     }
 
@@ -25,7 +29,7 @@ impl Pool {
         match self.free.pop_front() {
             Some(account) => account,
             None => {
-                let account = Account::new(self.seed, self.index);
+                let account = Account::new(self.seed, self.index, self.rpc_tx.clone());
                 self.index += 1;
                 account
             }
