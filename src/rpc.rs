@@ -10,6 +10,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use crate::address::Address;
 use crate::block::Block;
 use crate::unit::Raw;
+use crate::skip_fail;
 
 // abstract away the crazy receiver/sender stuff and use closure? to select an rpc function
 // rather write it as a trait and implement it for the message / response structs?
@@ -37,17 +38,6 @@ impl RpcCommand {
 pub struct RpcClient {
     url: String,
     rx: Receiver<RpcCommand>,
-}
-
-macro_rules! skip_fail {
-    ($res:expr) => {
-        match $res {
-            Ok(val) => val,
-            Err(_) => {
-                continue;
-            }
-        }
-    };
 }
 
 impl RpcClient {
