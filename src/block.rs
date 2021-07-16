@@ -1,14 +1,14 @@
-use serde_derive::{Serialize, Deserialize};
-use serde_aux::prelude::*;
-use ed25519_dalek::{PublicKey, SecretKey, ExpandedSecretKey};
-use ed25519_dalek::ed25519::signature::Signature as InternalSignature;
 use blake2b_simd::Hash;
+use ed25519_dalek::ed25519::signature::Signature as InternalSignature;
+use ed25519_dalek::{ExpandedSecretKey, PublicKey, SecretKey};
+use serde_aux::prelude::*;
+use serde_derive::{Deserialize, Serialize};
 use std::sync::mpsc::Sender;
 
 use crate::address::Address;
-use crate::unit::Raw;
-use crate::rpc::{rpc_work_generate, RpcCommand};
 use crate::common::{bytes_to_hexstring, hexstring_to_bytes};
+use crate::rpc::{rpc_work_generate, RpcCommand};
+use crate::unit::Raw;
 
 #[derive(Serialize, Deserialize)]
 pub struct Block {
@@ -26,7 +26,16 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn new(account: Address, previous: String, representative: Address, balance: Raw, link: String, link_as_account: String, signature: Option<String>, work: Option<String>) -> Self {
+    pub fn new(
+        account: Address,
+        previous: String,
+        representative: Address,
+        balance: Raw,
+        link: String,
+        link_as_account: String,
+        signature: Option<String>,
+        work: Option<String>,
+    ) -> Self {
         Self {
             r#type: "state".to_owned(),
             account,
@@ -42,7 +51,7 @@ impl Block {
 
     /// todo implement own signing
     pub fn sign(&mut self, private_key: Hash, public_key: PublicKey) {
-        // let preamble: [u8; 32] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6]; 
+        // let preamble: [u8; 32] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6];
         // let account = hexstring_to_bytes(&self.account);
         // let previous = hexstring_to_bytes(&self.previous);
         // let representative = hexstring_to_bytes(&self.representative);
@@ -59,6 +68,19 @@ impl Block {
     }
 
     pub fn work(&mut self, rpc_tx: Sender<RpcCommand>, hash: String) {
-        self.work = Some(rpc_work_generate(rpc_tx, hash, Some(true), None, None, None, None, Some(self), Some(true)).unwrap());
+        self.work = Some(
+            rpc_work_generate(
+                rpc_tx,
+                hash,
+                Some(true),
+                None,
+                None,
+                None,
+                None,
+                Some(self),
+                Some(true),
+            )
+            .unwrap(),
+        );
     }
 }

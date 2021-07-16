@@ -1,19 +1,19 @@
-use std::sync::mpsc::{Sender, Receiver};
 use serde_json::Value;
+use std::sync::mpsc::{Receiver, Sender};
 
-use crate::seed::Seed;
 use crate::account::Account;
-use crate::pool::Pool;
-use crate::unit::Raw;
 use crate::address::Address;
 use crate::common::bytes_to_hexstring;
+use crate::pool::Pool;
 use crate::rpc::RpcCommand;
+use crate::seed::Seed;
+use crate::unit::Raw;
 
 pub struct Wallet {
     seed: Seed,
     account: Account,
     pool: Pool,
-    rpc_tx: Sender<RpcCommand>
+    rpc_tx: Sender<RpcCommand>,
 }
 
 impl Wallet {
@@ -43,7 +43,11 @@ impl Wallet {
         if amount == 0 {
             Err("Cannot send 0 raw".to_string())
         } else if amount < self.account.balance() {
-            Err(format!("Cannot send {} raw because the main account only holds {}", amount, self.account.balance()))
+            Err(format!(
+                "Cannot send {} raw because the main account only holds {}",
+                amount,
+                self.account.balance()
+            ))
         } else {
             let mut pool_account = self.pool.get_account();
             println!("Attempting send from {}", pool_account.address());
@@ -54,11 +58,15 @@ impl Wallet {
             Ok(())
         }
     }
- 
+
     /// Receive some amount of nano through the pool (0 = any amount)
     pub fn receive_payment(&mut self, amount: Raw) -> Result<(), String> {
         let mut pool_account = self.pool.get_account();
-        println!("Attempting to receive {} raw on {}", amount, pool_account.address());
+        println!(
+            "Attempting to receive {} raw on {}",
+            amount,
+            pool_account.address()
+        );
         pool_account.receive_specific(amount)?;
         pool_account.send(amount, self.account.address())?;
         self.pool.return_account(pool_account);

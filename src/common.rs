@@ -1,12 +1,14 @@
-use once_cell::sync::Lazy;
 use bitvec::prelude::*;
- 
+use once_cell::sync::Lazy;
+
 use crate::seed::Seed;
 
-const HEX: [&str; 16] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"];
+const HEX: [&str; 16] = [
+    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F",
+];
 
 /// Convert bytes array to hex string, where each byte contains 2 hex digits.
-pub fn bytes_to_hexstring(bytes: &[u8]) -> String {     
+pub fn bytes_to_hexstring(bytes: &[u8]) -> String {
     let mut buf = String::new();
 
     for x in bytes.iter() {

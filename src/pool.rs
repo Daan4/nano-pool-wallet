@@ -1,11 +1,11 @@
-use std::collections::VecDeque;
-use std::sync::mpsc::{Sender, Receiver};
 use serde_json::Value;
+use std::collections::VecDeque;
+use std::sync::mpsc::{Receiver, Sender};
 
 use crate::account::Account;
-use crate::seed::Seed;
 use crate::address::Address;
 use crate::rpc::RpcCommand;
+use crate::seed::Seed;
 
 pub struct Pool {
     free: VecDeque<Account>,
@@ -17,10 +17,10 @@ pub struct Pool {
 impl Pool {
     pub fn new(seed: Seed, rpc_tx: Sender<RpcCommand>) -> Pool {
         Pool {
-            free: VecDeque::with_capacity(2^32-1),
+            free: VecDeque::with_capacity(2 ^ 32 - 1),
             index: 0,
             seed,
-            rpc_tx
+            rpc_tx,
         }
     }
 

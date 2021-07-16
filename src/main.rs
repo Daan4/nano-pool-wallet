@@ -1,16 +1,16 @@
-use nano_pool::wallet::Wallet;
+use nano_pool::account::Account;
 use nano_pool::address::Address;
 use nano_pool::common;
-use nano_pool::account::Account;
 use nano_pool::rpc::{RpcClient, RpcCommand};
+use nano_pool::wallet::Wallet;
 use nano_pool::ws::WsClient;
 
 use serde_derive::Deserialize;
 use serde_json::Value;
 use std::fs;
-use std::thread;
-use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc;
+use std::sync::mpsc::{Receiver, Sender};
+use std::thread;
 
 #[derive(Deserialize)]
 struct Config {
@@ -21,10 +21,10 @@ struct Config {
 }
 
 fn main() {
-    let contents = fs::read_to_string("config/Config.toml")
-        .expect("Something went wrong reading the file");
+    let contents =
+        fs::read_to_string("config/Config.toml").expect("Something went wrong reading the file");
 
-    let config: Config = toml::from_str(&contents).unwrap();    
+    let config: Config = toml::from_str(&contents).unwrap();
 
     let url = format!("{}:{}", config.node_address, config.node_rpc_port);
     let (rpc_tx, rpc_rx) = mpsc::channel::<RpcCommand>();
@@ -34,7 +34,7 @@ fn main() {
     });
 
     let url = format!("{}:{}", config.node_address, config.node_ws_port);
-    
+
     let ws = WsClient::new(url);
     thread::spawn(move || {
         ws.run();
