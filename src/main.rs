@@ -30,7 +30,9 @@ fn main() {
 
     let acc1 = Account::new(seed, 1, rpc_tx.clone(), ws_tx.clone());
     w.send_direct(1, acc1.lock().unwrap().address());
-    acc1.lock().unwrap().send(1, w.account().lock().unwrap().address()).unwrap();
+    //w.send_direct(1, acc1.lock().unwrap().address());
+    //w.send_direct(1, acc1.lock().unwrap().address());
+    //acc1.lock().unwrap().send(1, w.account().lock().unwrap().address()).unwrap();
 
     loop {}
 }

@@ -210,7 +210,17 @@ impl WsClient {
                     // Update account with new confirmed block
                     let message: JsonConfirmation = serde_json::from_value(v["message"].clone()).unwrap();
                     let account = &wsc.watched_accounts[&message.account];
-                    account.lock().unwrap().refresh_account_info();
+                    match message.block.subtype {
+                        Some(s) if s == "receive".to_string() => {
+                            account.lock().unwrap().refresh_account_info();
+                        },
+                        Some(s) if s == "send".to_string() => {
+                            account.lock().unwrap().refresh_account_info();
+                        },
+                        _ => {
+                            panic!("WS error: didnt find a valid block subtype in confirmation message?");
+                        }
+                    }
                 }
             }
         }
