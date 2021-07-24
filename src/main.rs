@@ -1,50 +1,38 @@
 use nano_pool::account::Account;
-use nano_pool::address::Address;
 use nano_pool::common;
+use nano_pool::config::get_config;
 use nano_pool::rpc::{RpcClient, RpcCommand};
 use nano_pool::wallet::Wallet;
-use nano_pool::ws::WsClient;
+use nano_pool::ws::{WsClient, WsSubscription};
 
-use serde_derive::Deserialize;
-use std::fs;
 use std::sync::mpsc;
 use std::thread;
 
-#[derive(Deserialize)]
-struct Config {
-    wallet_seed: Address,
-    node_address: String,
-    node_rpc_port: u16,
-    node_ws_port: u16,
-}
-
 fn main() {
-    let contents =
-        fs::read_to_string("config/Config.toml").expect("Something went wrong reading the file");
-
-    let config: Config = toml::from_str(&contents).unwrap();
+    let config = get_config();
 
     let url = format!("{}:{}", config.node_address, config.node_rpc_port);
     let (rpc_tx, rpc_rx) = mpsc::channel::<RpcCommand>();
     let rpc = RpcClient::new(url, rpc_rx);
-    thread::spawn(move || {
-        rpc.run();
-    });
+    thread::Builder::new()
+        .name("rpc".to_owned())
+        .spawn(move || {
+            rpc.run();
+        })
+        .unwrap();
 
     let url = format!("ws://{}:{}", config.node_address, config.node_ws_port);
-
-    let mut ws = WsClient::new(url);
-    thread::spawn(move || {
-        ws.run();
-    });
+    let (ws_tx, ws_rx) = mpsc::channel::<WsSubscription>();
+    WsClient::start(url, ws_rx);
 
     let seed = common::hexstring_to_bytes(&config.wallet_seed);
-    let mut w = Wallet::new(seed, rpc_tx.clone());
+    let mut w = Wallet::new(seed, rpc_tx.clone(), ws_tx.clone());
 
-    let acc1 = Account::new(seed, 1, rpc_tx.clone());
-    w.send_direct(1, acc1.address());
-    acc1.receive_all();
-    // update balance on confirmation with websocket
+    let acc1 = Account::new(seed, 1, rpc_tx.clone(), ws_tx.clone());
+    // w.send_direct(1, acc1.lock().unwrap().address());
+    // acc1.lock().unwrap().receive_all();
+    // acc1.send(1, w.account().lock().unwrap().address()).unwrap();
+    // w.receive_all_direct();
 
     loop {}
 }

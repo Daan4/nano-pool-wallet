@@ -3,15 +3,20 @@ use blake2b_simd::{Hash, Params};
 use byteorder::{BigEndian, WriteBytesExt};
 use ed25519_dalek::{PublicKey, SecretKey};
 use serde_json::Value;
+use std::cell::RefCell;
 use std::iter::FromIterator;
+use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{Arc, Mutex};
 
 use crate::address::Address;
 use crate::block::Block;
 use crate::common::{bytes_to_hexstring, encode_nano_base_32};
+use crate::config::get_config;
 use crate::rpc::*;
 use crate::seed::Seed;
 use crate::unit::Raw;
+use crate::ws::WsSubscription;
 
 pub struct Account {
     seed: Seed,
@@ -26,23 +31,28 @@ pub struct Account {
 }
 
 impl Account {
-    pub fn new(seed: Seed, index: u32, rpc_tx: Sender<RpcCommand>) -> Account {
+    pub fn new(
+        seed: Seed,
+        index: u32,
+        rpc_tx: Sender<RpcCommand>,
+        ws_tx: Sender<WsSubscription>,
+    ) -> Arc<Mutex<Self>> {
         // Derive private key from seed
-        let private_key = Account::derive_private_key(seed, index);
+        let private_key = Self::derive_private_key(seed, index);
 
         // Derive public key from private key
-        let public_key = Account::derive_public_key(private_key);
+        let public_key = Self::derive_public_key(private_key);
 
         // Derive address from public key
-        let address = Account::derive_address(public_key);
+        let address = Self::derive_address(public_key);
 
         // Fetch pending balance
-        let (_, pending) = Account::fetch_balance(rpc_tx.clone(), &address);
+        let (_, pending) = Self::fetch_balance(rpc_tx.clone(), &address);
 
         // Fetch account info
-        let account_info = Account::fetch_info(rpc_tx.clone(), &address);
+        let account_info = Self::fetch_info(rpc_tx.clone(), &address);
 
-        let account = Account {
+        let account = Self {
             seed,
             index,
             private_key,
@@ -59,12 +69,19 @@ impl Account {
                 .unwrap()
                 .parse::<u64>()
                 .unwrap(),
-            rpc_tx: rpc_tx,
+            rpc_tx,
         };
+
+        // Watch account with websocket client, waits until ws subscription/update is acked
+        let account = Arc::new(Mutex::new(account));
+        let (tx, rx) = mpsc::channel::<()>();
+        let sub = WsSubscription::new(account.clone(), tx);
+        ws_tx.send(sub).unwrap();
+        rx.recv().unwrap();
 
         // If there is pending balance, receive it first
         if pending > 0 {
-            account.receive_all()
+            account.lock().unwrap().receive_all()
         }
 
         account
@@ -229,15 +246,18 @@ impl Account {
     }
 
     pub fn refresh_account_info(&mut self) {
-        // let account_info = Account::fetch_info(&self.address);
-        // self.frontier = account_info.confirmed_frontier.unwrap();
-        // self.open_block = account_info.open_block;
-        // self.representative_block = account_info.representative_block;
-        // self.balance = account_info.confirmed_balance.unwrap();
-        // self.modified_timestamp = account_info.modified_timestamp;
-        // self.block_count = account_info.block_count;
-        // self.account_version = account_info.account_version;
-        // self.confirmation_height = account_info.confirmed_height.unwrap()
+        let account_info = Account::fetch_info(self.rpc_tx.clone(), &self.address);
+        self.frontier = account_info.confirmed_frontier.unwrap();
+        self.balance = account_info
+            .confirmed_balance
+            .unwrap()
+            .parse::<Raw>()
+            .unwrap();
+        self.confirmation_height = account_info
+            .confirmed_height
+            .unwrap()
+            .parse::<u64>()
+            .unwrap();
     }
 
     /// Fetch account info

@@ -1,35 +1,45 @@
 use serde_json::Value;
+use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{Arc, Mutex};
 
 use crate::account::Account;
 use crate::address::Address;
 use crate::rpc::RpcCommand;
 use crate::seed::Seed;
+use crate::ws::WsSubscription;
 
 pub struct Pool {
-    free: VecDeque<Account>,
+    free: VecDeque<Arc<Mutex<Account>>>,
     index: u32,
     seed: Seed,
     rpc_tx: Sender<RpcCommand>,
+    ws_tx: Sender<WsSubscription>,
 }
 
 impl Pool {
-    pub fn new(seed: Seed, rpc_tx: Sender<RpcCommand>) -> Pool {
+    pub fn new(seed: Seed, rpc_tx: Sender<RpcCommand>, ws_tx: Sender<WsSubscription>) -> Pool {
         Pool {
             free: VecDeque::with_capacity(2 ^ 32 - 1),
             index: 0,
             seed,
             rpc_tx,
+            ws_tx,
         }
     }
 
     /// Get a free account to use for a transaction
-    pub fn get_account(&mut self) -> Account {
+    pub fn get_account(&mut self) -> Arc<Mutex<Account>> {
         match self.free.pop_front() {
             Some(account) => account,
             None => {
-                let account = Account::new(self.seed, self.index, self.rpc_tx.clone());
+                let account = Account::new(
+                    self.seed,
+                    self.index,
+                    self.rpc_tx.clone(),
+                    self.ws_tx.clone(),
+                );
                 self.index += 1;
                 account
             }
@@ -38,11 +48,13 @@ impl Pool {
 
     /// Return a used account to the free pool after a transaction
     /// If there is remaining balance on a pool account after a transaction it should be refunded
-    pub fn return_account(&mut self, account: Account) {
+    pub fn return_account(&mut self, account: Arc<Mutex<Account>>) {
+        let account_arc = account.clone();
+        let account = account.lock().unwrap();
         if account.balance() > 0 {
             account.refund();
         }
-        self.free.push_back(account)
+        self.free.push_back(account_arc)
     }
 
     /// Get the account adress at a given index
