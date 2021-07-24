@@ -86,47 +86,55 @@ impl Account {
 
     /// Receive all pending blocks
     pub fn receive_all(&self) {
-        let pending_blocks = rpc_accounts_pending(
-            self.rpc_tx.clone(),
-            vec![self.address()],
-            1,
-            Some(0),
-            Some(true),
-            None,
-            None,
-            Some(true),
-        )
-        .unwrap();
-        for (_, pending_blocks) in pending_blocks {
-            for send_block in pending_blocks {
-                let block: Block;
-                match self.confirmation_height {
-                    0 => {
-                        block = rpc_block_create(
-                            self.rpc_tx.clone(),
-                            "0".to_owned(),
-                            self.address.clone(),
-                            self.address.clone(),
-                            send_block.amount.unwrap(),
-                            send_block.hash,
-                            self.private_key(),
-                        )
-                        .unwrap();
+        loop {
+            let pending_blocks = rpc_accounts_pending(
+                self.rpc_tx.clone(),
+                vec![self.address()],
+                1,
+                Some(0),
+                Some(true),
+                None,
+                None,
+                Some(true),
+            )
+            .unwrap();
+
+            if pending_blocks.len() == 0 {
+                // We can stop receiving if theres no more pending blocks
+                return;
+            }
+
+            for (_, pending_blocks) in pending_blocks {
+                for send_block in pending_blocks {
+                    let block: Block;
+                    match self.confirmation_height {
+                        0 => {
+                            block = rpc_block_create(
+                                self.rpc_tx.clone(),
+                                "0".to_owned(),
+                                self.address.clone(),
+                                self.address.clone(),
+                                send_block.amount.unwrap(),
+                                send_block.hash,
+                                self.private_key(),
+                            )
+                            .unwrap();
+                        }
+                        _ => {
+                            block = rpc_block_create(
+                                self.rpc_tx.clone(),
+                                self.frontier.clone(),
+                                self.address.clone(),
+                                self.address.clone(),
+                                self.balance + send_block.amount.unwrap(),
+                                send_block.hash,
+                                self.private_key(),
+                            )
+                            .unwrap();
+                        }
                     }
-                    _ => {
-                        block = rpc_block_create(
-                            self.rpc_tx.clone(),
-                            self.frontier.clone(),
-                            self.address.clone(),
-                            self.address.clone(),
-                            self.balance + send_block.amount.unwrap(),
-                            send_block.hash,
-                            self.private_key(),
-                        )
-                        .unwrap();
-                    }
+                    rpc_process(self.rpc_tx.clone(), SUBTYPE::RECEIVE, block).unwrap();
                 }
-                rpc_process(self.rpc_tx.clone(), SUBTYPE::RECEIVE, block).unwrap();
             }
         }
     }
