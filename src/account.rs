@@ -2,17 +2,14 @@ use bitvec::prelude::*;
 use blake2b_simd::{Hash, Params};
 use byteorder::{BigEndian, WriteBytesExt};
 use ed25519_dalek::{PublicKey, SecretKey};
-use serde_json::Value;
-use std::cell::RefCell;
 use std::iter::FromIterator;
 use std::sync::mpsc;
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 use crate::address::Address;
 use crate::block::Block;
 use crate::common::{bytes_to_hexstring, encode_nano_base_32};
-use crate::config::get_config;
 use crate::rpc::*;
 use crate::seed::Seed;
 use crate::unit::Raw;

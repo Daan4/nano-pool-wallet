@@ -13,6 +13,8 @@ use websocket::{ClientBuilder, Message};
 
 use crate::account::Account;
 use crate::address::Address;
+use crate::unit::Raw;
+use crate::block::Block;
 
 // todo stop watching when channel is closed!!
 pub struct WsSubscription {
@@ -40,7 +42,7 @@ pub struct WsClient {
     url: String,
     client: Client<TcpStream>,
     watched_accounts: HashMap<Address, Arc<Mutex<Account>>>,
-    pub awaiting_ack: Option<(String, Sender<()>)>,
+    awaiting_ack: Option<(String, Sender<()>)>,
 }
 
 impl WsClient {
@@ -161,12 +163,15 @@ impl WsClient {
     fn run_sender(wsc: Arc<Mutex<WsClient>>, rx: Receiver<WsSubscription>) {
         loop {
             let sub = rx.recv().unwrap();
-            while let Some(_) = wsc.lock().unwrap().awaiting_ack {
+            let mut wsc = wsc.lock().unwrap();
+            if let Some(_) = wsc.awaiting_ack {
                 // We are already waiting on another command ack, let's wait for that before sending another one...
                 // todo move polling rate to config?
+                drop(wsc);
                 thread::sleep(Duration::from_millis(100));
+                continue;
             }
-            wsc.lock().unwrap().watch_account(sub);
+            wsc.watch_account(sub);
         }
     }
 
@@ -185,19 +190,27 @@ impl WsClient {
                         continue;
                     }
 
-                    let ack: JsonSubscribeResponse = serde_json::from_value(v).unwrap();
-                    match &wsc.awaiting_ack {
-                        Some((topic, tx)) => {
+                    // Check for ack
+                    let ack = v["ack"].as_str();
+                    match (ack, &wsc.awaiting_ack) {
+                        (Some(ack), Some((topic, tx))) => {
                             tx.send(()).unwrap();
-                            if ack.ack != *topic {
+                            if ack != *topic {
                                 panic!("WS error unexpected ack?!");
                             }
                             wsc.awaiting_ack = None;
-                        }
+                            continue;
+                        },
+                        (None, _) => {},
                         _ => {
                             panic!("WS error unexpected ack?!");
                         }
                     }
+
+                    // Update account with new confirmed block
+                    let message: JsonConfirmation = serde_json::from_value(v["message"].clone()).unwrap();
+                    let account = &wsc.watched_accounts[&message.account];
+                    account.lock().unwrap().refresh_account_info();
                 }
             }
         }
@@ -214,16 +227,11 @@ struct JsonSubscribeMessage {
 }
 
 #[derive(Deserialize)]
-struct JsonSubscribeResponse {
-    ack: String,
-    #[serde(deserialize_with = "deserialize_number_from_string")]
-    time: u64,
-}
-
-#[derive(Deserialize)]
 struct JsonConfirmation {
-    message: JsonConfirmationMessage,
+    account: Address,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    amount: Raw,
+    block: Block,
+    confirmation_type: String,
+    hash: String
 }
-
-#[derive(Deserialize)]
-struct JsonConfirmationMessage {}
