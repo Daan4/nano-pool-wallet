@@ -207,7 +207,8 @@ impl WsClient {
                         }
                     }
 
-                    // Update account with new confirmed block
+                    // Update account information with newly confirmed block
+                    // If the linked_account is also watched, automatically receive it (this is an internal pool<>wallet transaction, so we can safely receive!)
                     let message: JsonConfirmation = serde_json::from_value(v["message"].clone()).unwrap();
                     let account = &wsc.watched_accounts[&message.account];
                     match message.block.subtype {
@@ -220,6 +221,13 @@ impl WsClient {
                         _ => {
                             panic!("WS error: didnt find a valid block subtype in confirmation message?");
                         }
+                    }
+                    let linked_account = &wsc.watched_accounts.get(&message.block.link_as_account);
+                    match linked_account {
+                        Some(account) => {
+                            account.lock().unwrap().receive_all();
+                        },
+                        None => {}
                     }
                 }
             }
