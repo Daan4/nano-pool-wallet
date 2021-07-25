@@ -16,7 +16,6 @@ use crate::address::Address;
 use crate::unit::Raw;
 use crate::block::Block;
 
-// todo stop watching when channel is closed!!
 pub struct WsSubscription {
     account: Arc<Mutex<Account>>,
     tx_response: Sender<()>,

@@ -6,6 +6,8 @@ use std::iter::FromIterator;
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
 
 use crate::address::Address;
 use crate::block::Block;
@@ -23,6 +25,7 @@ pub struct Account {
     address: Address,
     balance: Raw,
     frontier: String,
+    frontier_confirmed: bool,
     confirmation_height: u64,
     rpc_tx: Sender<RpcCommand>,
 }
@@ -48,6 +51,8 @@ impl Account {
 
         // Fetch account info
         let account_info = Self::fetch_info(rpc_tx.clone(), &address);
+        let frontier = account_info.confirmed_frontier.unwrap();
+        let frontier_confirmed = account_info.frontier == frontier;
 
         let account = Self {
             seed,
@@ -60,7 +65,8 @@ impl Account {
                 .unwrap()
                 .parse::<Raw>()
                 .unwrap(),
-            frontier: account_info.confirmed_frontier.unwrap(),
+            frontier,
+            frontier_confirmed,
             confirmation_height: account_info
                 .confirmed_height
                 .unwrap()
@@ -85,7 +91,7 @@ impl Account {
     }
 
     /// Receive all pending blocks
-    pub fn receive_all(&self) {
+    pub fn receive_all(&mut self) {
         loop {
             let pending_blocks = rpc_accounts_pending(
                 self.rpc_tx.clone(),
@@ -133,7 +139,10 @@ impl Account {
                             .unwrap();
                         }
                     }
-                    rpc_process(self.rpc_tx.clone(), SUBTYPE::RECEIVE, block).unwrap();
+                    let hash = rpc_process(self.rpc_tx.clone(), SUBTYPE::RECEIVE, block).unwrap();
+                    self.balance += send_block.amount.unwrap();
+                    self.frontier_confirmed = false;
+                    self.frontier = hash;
                 }
             }
         }
@@ -163,7 +172,11 @@ impl Account {
                 self.private_key(),
             )
             .unwrap();
-            rpc_process(self.rpc_tx.clone(), SUBTYPE::SEND, block).unwrap();
+            
+            let hash = rpc_process(self.rpc_tx.clone(), SUBTYPE::SEND, block).unwrap();
+            self.balance -= amount;
+            self.frontier_confirmed = false;
+            self.frontier = hash;
             Ok(())
         }
     }
@@ -198,6 +211,10 @@ impl Account {
 
     pub fn balance(&self) -> Raw {
         self.balance
+    }
+
+    pub fn frontier_confirmed(&self) -> bool {
+        self.frontier_confirmed
     }
 
     /// Derive private key from seed and index
@@ -253,6 +270,7 @@ impl Account {
     pub fn refresh_account_info(&mut self) {
         let account_info = Account::fetch_info(self.rpc_tx.clone(), &self.address);
         self.frontier = account_info.confirmed_frontier.unwrap();
+        self.frontier_confirmed = account_info.frontier == self.frontier;
         self.balance = account_info
             .confirmed_balance
             .unwrap()

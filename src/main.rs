@@ -29,10 +29,8 @@ fn main() {
     let mut w = Wallet::new(seed, rpc_tx.clone(), ws_tx.clone());
 
     let acc1 = Account::new(seed, 1, rpc_tx.clone(), ws_tx.clone());
-    w.send_direct(1, acc1.lock().unwrap().address());
-    //w.send_direct(1, acc1.lock().unwrap().address());
-    //w.send_direct(1, acc1.lock().unwrap().address());
-    //acc1.lock().unwrap().send(1, w.account().lock().unwrap().address()).unwrap();
-
+    for i in 1..11 {
+        w.send_direct(i, acc1.lock().unwrap().address());
+    }
     loop {}
 }
