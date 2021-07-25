@@ -5,6 +5,7 @@ pub mod address;
 pub mod block;
 pub mod common;
 pub mod config;
+pub mod logger;
 pub mod pool;
 pub mod rpc;
 pub mod seed;

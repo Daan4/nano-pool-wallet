@@ -1,3 +1,4 @@
+use log::info;
 use serde::{Deserialize, Serialize};
 use serde_aux::prelude::*;
 use serde_json::{json, Value};
@@ -37,6 +38,7 @@ impl WsSubscription {
         self.tx_response.send(()).unwrap();
     }
 }
+
 pub struct WsClient {
     url: String,
     client: Client<TcpStream>,
@@ -111,7 +113,7 @@ impl WsClient {
     }
 
     fn send(&mut self, json: Value) -> Result<(), String> {
-        println!("WS send {}\n", json);
+        info!("WS send {}", json);
         let message = Message::text(json.to_string());
         self.client.send_message(&message).unwrap();
         Ok(())
@@ -123,7 +125,7 @@ impl WsClient {
         match message {
             Ok(OwnedMessage::Text(t)) => {
                 let json = serde_json::from_str(&t).unwrap();
-                println!("WS recv {}\n", json);
+                info!("WS recv {}", json);
                 Ok(json)
             }
             Ok(OwnedMessage::Close(_)) => {

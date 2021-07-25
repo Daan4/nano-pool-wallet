@@ -265,15 +265,20 @@ impl Account {
         rpc_account_balance(rpc_tx, address).unwrap()
     }
 
+    /// Refresh account frontier, balance, confirmation_height.
     pub fn refresh_account_info(&mut self) {
         let account_info = Account::fetch_info(self.rpc_tx.clone(), &self.address);
+
         self.frontier = account_info.confirmed_frontier.unwrap();
+
         self.frontier_confirmed = account_info.frontier == self.frontier;
+
         self.balance = account_info
             .confirmed_balance
             .unwrap()
             .parse::<Raw>()
             .unwrap();
+
         self.confirmation_height = account_info
             .confirmed_height
             .unwrap()

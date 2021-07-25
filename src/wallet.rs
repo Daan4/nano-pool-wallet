@@ -56,7 +56,7 @@ impl Wallet {
             let pool_account_arc = self.pool.get_account();
             let pool_account_arc_clone = pool_account_arc.clone();
             let mut pool_account = pool_account_arc.lock().unwrap();
-            println!("Attempting send from {}", pool_account.address());
+            // println!("Attempting send from {}", pool_account.address());
             account.send(amount, pool_account.address())?;
             pool_account.receive_specific(amount)?;
             pool_account.send(amount, destination)?;
@@ -70,11 +70,11 @@ impl Wallet {
         let pool_account_arc = self.pool.get_account();
         let pool_account_arc_clone = pool_account_arc.clone();
         let mut pool_account = pool_account_arc.lock().unwrap();
-        println!(
-            "Attempting to receive {} raw on {}",
-            amount,
-            pool_account.address()
-        );
+        // println!(
+        //     "Attempting to receive {} raw on {}",
+        //     amount,
+        //     pool_account.address()
+        // );
         pool_account.receive_specific(amount)?;
         let account = self.account.lock().unwrap();
         pool_account.send(amount, account.address())?;

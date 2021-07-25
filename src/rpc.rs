@@ -1,5 +1,5 @@
 use curl::easy::Easy;
-use log::{Level, Log, Metadata, Record};
+use log::info;
 use serde_aux::prelude::*;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -14,10 +14,6 @@ use crate::block::Block;
 use crate::skip_fail;
 use crate::unit::Raw;
 
-// abstract away the crazy receiver/sender stuff and use closure? to select an rpc function
-// rather write it as a trait and implement it for the message / response structs?
-// keep rpc_ functions and make them interact with RpcClient via RpcCommand somehow, theyll require a tx param
-// write the rpc_ functions as associated function of a struct implementing command trait and having the 2 way serialization?
 pub struct RpcCommand {
     cmd: Value,
     tx_response: Sender<Value>,
@@ -37,22 +33,6 @@ impl RpcCommand {
     }
 }
 
-pub struct RpcLogger;
-
-impl Log for RpcLogger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        metadata.level() <= Level::Info
-    }
-
-    fn log(&self, record: &Record) {
-        if self.enabled(record.metadata()) {
-            println!("{} - {}", record.level(), record.args());
-        }
-    }
-
-    fn flush(&self) {}
-}
-
 pub struct RpcClient {
     url: String,
     rx: Receiver<RpcCommand>,
@@ -60,10 +40,7 @@ pub struct RpcClient {
 
 impl RpcClient {
     pub fn start(url: String, rx: Receiver<RpcCommand>) {
-        let rpc = Self {
-            url, 
-            rx
-        };
+        let rpc = Self { url, rx };
 
         thread::Builder::new()
             .name("rpc".to_owned())
@@ -79,7 +56,7 @@ impl RpcClient {
 
             let json = cmd.json();
 
-            println!("RPC send {}\n", json);
+            info!("RPC send {}", json);
             let data = json.to_string();
             let mut data = data.as_bytes();
             let mut easy = Easy::new();
@@ -103,7 +80,7 @@ impl RpcClient {
             drop(transfer);
             let dst = String::from_utf8(dst).unwrap();
             let dst: Value = serde_json::from_str(&dst).unwrap();
-            println!("RPC recv {}\n", dst);
+            info!("RPC recv {}", dst);
             cmd.respond(dst).unwrap();
         }
     }

@@ -1,11 +1,11 @@
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
-use log::{SetLoggerError, LevelFilter};
 
 use nano_pool::account::Account;
 use nano_pool::common;
 use nano_pool::config::get_config;
 use nano_pool::config::Config;
+use nano_pool::logger;
 use nano_pool::rpc::{RpcClient, RpcCommand};
 use nano_pool::wallet::Wallet;
 use nano_pool::ws::{WsClient, WsSubscription};
@@ -13,7 +13,7 @@ use nano_pool::ws::{WsClient, WsSubscription};
 fn main() {
     let cfg = get_config();
 
-    setup_logging();
+    logger::init().unwrap();
 
     let rpc_tx = start_rpc_client(&cfg);
 
@@ -24,16 +24,12 @@ fn main() {
     let mut w = Wallet::new(seed, rpc_tx.clone(), ws_tx.clone());
 
     let acc1 = Account::new(seed, 1, rpc_tx.clone(), ws_tx.clone());
-    for i in 1..11 {
+    for i in 1..2 {
         w.send_direct(i, acc1.lock().unwrap().address());
     }
 
     // Halt; rpc and ws threads still run
     loop {}
-}
-
-fn setup_logging() {
-
 }
 
 fn start_rpc_client(cfg: &Config) -> Sender<RpcCommand> {
