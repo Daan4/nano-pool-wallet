@@ -1,11 +1,10 @@
-use chrono::offset::Local;
-use chrono::DateTime;
 use log::{Level, LevelFilter, Log, Metadata, Record, SetLoggerError};
 use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::time::SystemTime;
+use time;
 
 static LOGGER: Logger = Logger;
 
@@ -100,11 +99,9 @@ impl Log for Logger {
     /// WARN
     /// ERROR
     fn log(&self, record: &Record) {
-        let system_time = SystemTime::now();
-        let datetime: DateTime<Local> = system_time.into();
         let message = format!(
             "{} {} {}\n",
-            datetime.format("%d/%m/%Y %T"),
+            time::strftime("%Y/%m/%d %H:%M:%S.%f", &time::now()).unwrap(),
             record.level(),
             record.args()
         );

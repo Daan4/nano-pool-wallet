@@ -99,27 +99,31 @@ struct JsonAccountBalanceMessage {
 }
 
 #[derive(Deserialize)]
-struct JsonAccountBalanceResponse {
+pub struct JsonAccountBalanceResponse {
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    balance: Raw,
+    pub balance: Raw,
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    pending: Raw,
+    pub pending: Raw,
 }
 
 pub fn rpc_account_balance(
     rpc_tx: Sender<RpcCommand>,
     address: &Address,
-) -> Result<(Raw, Raw), String> {
+) -> Result<JsonAccountBalanceResponse, String> {
+    let action = "account_balance".to_owned();
+    info!("RPC cmd {}", &action);
+
     let message = JsonAccountBalanceMessage {
-        action: "account_balance".to_owned(),
+        action: action,
         account: address.to_owned(),
     };
     let message = serde_json::to_value(message).unwrap();
     let (tx, rx) = mpsc::channel::<Value>();
     let cmd = RpcCommand::new(message, tx);
     rpc_tx.send(cmd).unwrap();
+
     let response: JsonAccountBalanceResponse = serde_json::from_value(rx.recv().unwrap()).unwrap();
-    Ok((response.balance, response.pending))
+    Ok(response)
 }
 
 #[derive(Serialize)]
@@ -175,8 +179,11 @@ pub fn rpc_accounts_pending(
         }
         _ => {}
     }
+    let action = "accounts_pending".to_owned();
+    info!("RPC cmd {}", &action);
+
     let message = JsonAccountsPendingMessage {
-        action: "accounts_pending".to_owned(),
+        action,
         accounts: addresses,
         count,
         threshold,
@@ -189,6 +196,7 @@ pub fn rpc_accounts_pending(
     let (tx, rx) = mpsc::channel::<Value>();
     let cmd = RpcCommand::new(message, tx);
     rpc_tx.send(cmd).unwrap();
+    
     let response: JsonAccountsPendingResponse = serde_json::from_value(rx.recv().unwrap()).unwrap();
     let mut output: HashMap<Address, Vec<PendingBlock>> = HashMap::new();
     for account in response.blocks.keys() {
@@ -289,8 +297,11 @@ pub fn rpc_work_generate(
     block: Option<&Block>,
     json_block: Option<bool>,
 ) -> Result<String, String> {
+    let action = "work_generate".to_owned();
+    info!("RPC cmd {}", &action);
+
     let message = JsonWorkGenerateMessage {
-        action: "work_generate".to_owned(),
+        action,
         hash,
         use_peers,
         difficulty,
@@ -304,6 +315,7 @@ pub fn rpc_work_generate(
     let (tx, rx) = mpsc::channel::<Value>();
     let cmd = RpcCommand::new(message, tx);
     rpc_tx.send(cmd).unwrap();
+
     let response: JsonWorkGenerateResponse = serde_json::from_value(rx.recv().unwrap()).unwrap();
     Ok(response.work)
 }
@@ -345,8 +357,11 @@ pub fn rpc_account_info(
     address: &Address,
     include_confirmed: Option<bool>,
 ) -> Result<JsonAccountInfoResponse, String> {
+    let action = "account_info".to_owned();
+    info!("RPC cmd {}", &action);
+
     let message = JsonAccountInfoMessage {
-        action: "account_info".to_owned(),
+        action,
         account: address.to_owned(),
         include_confirmed,
     };
@@ -354,6 +369,7 @@ pub fn rpc_account_info(
     let (tx, rx) = mpsc::channel::<Value>();
     let cmd = RpcCommand::new(message, tx);
     rpc_tx.send(cmd).unwrap();
+
     let response = serde_json::from_value(rx.recv().unwrap());
     match response {
         Ok(r) => Ok(r),
@@ -390,8 +406,11 @@ pub fn rpc_block_create(
     link: String,
     key: String,
 ) -> Result<Block, String> {
+    let action = "block_create".to_owned();
+    info!("RPC cmd {}", &action);
+
     let message = JsonBlockCreateMessage {
-        action: "block_create".to_owned(),
+        action,
         json_block: true,
         r#type: "state".to_owned(),
         previous,
@@ -405,6 +424,7 @@ pub fn rpc_block_create(
     let (tx, rx) = mpsc::channel::<Value>();
     let cmd = RpcCommand::new(message, tx);
     rpc_tx.send(cmd).unwrap();
+
     let response: JsonBlockCreateResponse = serde_json::from_value(rx.recv().unwrap()).unwrap();
     Ok(response.block)
 }
@@ -439,8 +459,11 @@ pub fn rpc_process(
             subtypestr = "receive".to_owned();
         }
     }
+    let action = "process".to_owned();
+    info!("RPC cmd {}", &action);
+
     let message = JsonProcessMessage {
-        action: "process".to_owned(),
+        action,
         json_block: true,
         subtype: subtypestr,
         block,
@@ -449,6 +472,7 @@ pub fn rpc_process(
     let (tx, rx) = mpsc::channel::<Value>();
     let cmd = RpcCommand::new(message, tx);
     rpc_tx.send(cmd).unwrap();
+
     let response: JsonProcessResponse = serde_json::from_value(rx.recv().unwrap()).unwrap();
     Ok(response.hash)
 }

@@ -262,7 +262,8 @@ impl Account {
 
     /// Fetch balance and pending balance for address
     fn fetch_balance(rpc_tx: Sender<RpcCommand>, address: &Address) -> (Raw, Raw) {
-        rpc_account_balance(rpc_tx, address).unwrap()
+        let json = rpc_account_balance(rpc_tx, address).unwrap();
+        (json.balance, json.pending)
     }
 
     /// Refresh account frontier, balance, confirmation_height.

@@ -20,7 +20,7 @@ serde_derive = "1"
 serde-aux = "2.2"
 websocket = "0.26"
 log = "0.4"
-chrono = "0.4"
+time = "0.1.42"
 
 # This is a modified version of https://github.com/dalek-cryptography/ed25519-dalek
 # which hashes using blake2b instead of sha256.
