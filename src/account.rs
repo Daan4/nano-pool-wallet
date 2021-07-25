@@ -6,8 +6,6 @@ use std::iter::FromIterator;
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
 
 use crate::address::Address;
 use crate::block::Block;
@@ -172,7 +170,7 @@ impl Account {
                 self.private_key(),
             )
             .unwrap();
-            
+
             let hash = rpc_process(self.rpc_tx.clone(), SUBTYPE::SEND, block).unwrap();
             self.balance -= amount;
             self.frontier_confirmed = false;

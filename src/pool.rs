@@ -1,7 +1,5 @@
-use serde_json::Value;
-use std::cell::RefCell;
 use std::collections::VecDeque;
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 use crate::account::Account;

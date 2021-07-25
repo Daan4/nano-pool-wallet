@@ -13,8 +13,8 @@ use websocket::{ClientBuilder, Message};
 
 use crate::account::Account;
 use crate::address::Address;
-use crate::unit::Raw;
 use crate::block::Block;
+use crate::unit::Raw;
 
 pub struct WsSubscription {
     account: Arc<Mutex<Account>>,
@@ -179,7 +179,7 @@ impl WsClient {
             let mut wsc = wsc.lock().unwrap();
             match wsc.recv() {
                 Err(e) => {
-                    panic!(e);
+                    panic!("{}", e);
                 }
                 Ok(v) => {
                     if v == json!({}) {
@@ -199,8 +199,8 @@ impl WsClient {
                             }
                             wsc.awaiting_ack = None;
                             continue;
-                        },
-                        (None, _) => {},
+                        }
+                        (None, _) => {}
                         _ => {
                             panic!("WS error unexpected ack?!");
                         }
@@ -208,15 +208,16 @@ impl WsClient {
 
                     // Update account information with newly confirmed block
                     // If the linked_account is also watched, automatically receive it (this is an internal pool<>wallet transaction, so we can safely receive!)
-                    let message: JsonConfirmation = serde_json::from_value(v["message"].clone()).unwrap();
+                    let message: JsonConfirmation =
+                        serde_json::from_value(v["message"].clone()).unwrap();
                     let account = &wsc.watched_accounts[&message.account];
                     match message.block.subtype {
                         Some(s) if s == "receive".to_string() => {
                             account.lock().unwrap().refresh_account_info();
-                        },
+                        }
                         Some(s) if s == "send".to_string() => {
                             account.lock().unwrap().refresh_account_info();
-                        },
+                        }
                         _ => {
                             panic!("WS error: didnt find a valid block subtype in confirmation message?");
                         }
@@ -225,7 +226,7 @@ impl WsClient {
                     match linked_account {
                         Some(account) => {
                             account.lock().unwrap().receive_all();
-                        },
+                        }
                         None => {}
                     }
                 }
@@ -250,5 +251,5 @@ struct JsonConfirmation {
     amount: Raw,
     block: Block,
     confirmation_type: String,
-    hash: String
+    hash: String,
 }
