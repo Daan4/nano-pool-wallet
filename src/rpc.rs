@@ -1,4 +1,5 @@
 use curl::easy::Easy;
+use log::{Level, Log, Metadata, Record};
 use serde_aux::prelude::*;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -6,6 +7,7 @@ use std::collections::HashMap;
 use std::io::Read;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
+use std::thread;
 
 use crate::address::Address;
 use crate::block::Block;
@@ -35,14 +37,40 @@ impl RpcCommand {
     }
 }
 
+pub struct RpcLogger;
+
+impl Log for RpcLogger {
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.level() <= Level::Info
+    }
+
+    fn log(&self, record: &Record) {
+        if self.enabled(record.metadata()) {
+            println!("{} - {}", record.level(), record.args());
+        }
+    }
+
+    fn flush(&self) {}
+}
+
 pub struct RpcClient {
     url: String,
     rx: Receiver<RpcCommand>,
 }
 
 impl RpcClient {
-    pub fn new(url: String, rx: Receiver<RpcCommand>) -> Self {
-        Self { url, rx }
+    pub fn start(url: String, rx: Receiver<RpcCommand>) {
+        let rpc = Self {
+            url, 
+            rx
+        };
+
+        thread::Builder::new()
+            .name("rpc".to_owned())
+            .spawn(move || {
+                rpc.run();
+            })
+            .unwrap();
     }
 
     pub fn run(&self) {
