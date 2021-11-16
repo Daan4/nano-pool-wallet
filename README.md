@@ -51,12 +51,22 @@ sudo docker run --restart=unless-stopped -d \
 .\nano-work-server.exe --gpu 0:0 --listen-address <WSL ethernet adapter ip>:1000
 ```
 
-3. set up config/Config.toml
+3. set node.work_peers setting in config-node.toml to 
 
-4. run program
+```toml
+["::ffff:<WSL ethernet adapter ip>:1000"]
+```
+
+4. set up config/Config.toml
+
+5. run program
 
 ```bash
 cargo run
 ```
 
 ## Run tests
+
+```bash
+cargo test
+```
