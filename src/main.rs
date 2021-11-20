@@ -1,7 +1,6 @@
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
 
-use nano_pool::account::Account;
 use nano_pool::common;
 use nano_pool::config::get_config;
 use nano_pool::config::Config;
@@ -9,6 +8,7 @@ use nano_pool::logger;
 use nano_pool::rpc::{RpcClient, RpcCommand};
 use nano_pool::wallet::Wallet;
 use nano_pool::ws::{WsClient, WsSubscription};
+use nano_pool::cli::CliClient;
 
 fn main() {
     let cfg = get_config();
@@ -19,17 +19,13 @@ fn main() {
 
     let ws_tx = start_ws_client(&cfg);
 
-    // Testing stuff
     let seed = common::hexstring_to_bytes(&cfg.wallet_seed);
-    let mut w = Wallet::new(seed, rpc_tx.clone(), ws_tx.clone());
+    let wallet = Wallet::new(seed, rpc_tx.clone(), ws_tx.clone());
 
-    let acc1 = Account::new(seed, 1, rpc_tx.clone(), ws_tx.clone());
-    for i in 1..2 {
-        w.send_direct(i, acc1.lock().unwrap().address());
-    }
+    start_cli_client(wallet);
 
-    // Halt; rpc and ws threads still run
-    loop {}
+    // Halt; rpc, ws, cli threads still run
+    loop {}    
 }
 
 fn start_rpc_client(cfg: &Config) -> Sender<RpcCommand> {
@@ -44,4 +40,8 @@ fn start_ws_client(cfg: &Config) -> Sender<WsSubscription> {
     let (ws_tx, ws_rx) = mpsc::channel::<WsSubscription>();
     WsClient::start(url, ws_rx);
     ws_tx
+}
+
+fn start_cli_client(wallet: Wallet) {
+    CliClient::start(wallet);
 }

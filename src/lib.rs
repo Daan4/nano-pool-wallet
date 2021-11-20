@@ -12,3 +12,4 @@ pub mod seed;
 pub mod unit;
 pub mod wallet;
 pub mod ws;
+pub mod cli;
