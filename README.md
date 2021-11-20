@@ -48,24 +48,13 @@ sudo docker run --restart=unless-stopped -d \
 2. run nano work server
 
 ```powershell
-.\nano-work-server.exe --gpu 0:0 --listen-address <WSL ethernet adapter ip>:1000
+.\nano-work-server.exe --gpu 0:0 --listen-address <vEthernet Default Switch ip>:1000
 ```
 
 3. set node.work_peers setting in config-node.toml to 
 
 ```toml
-["::ffff:<WSL ethernet adapter ip>:1000"]
-```
-
-If using Docker Desktop and WSL2 make sure that the docker subnet contains the WSL ethernet adapter ip
-```json
-# in daemon.json add
-
-“default-address-pools” : [
-{
-“base” : “172.31.0.0/16”,
-“size” : 24
-}
+["::ffff:<vEthernet Default Switch ip>:1000"]
 ```
 
 4. set up config/Config.toml
