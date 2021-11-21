@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_aux::prelude::*;
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::net::TcpStream;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
@@ -208,26 +209,20 @@ impl WsClient {
                         }
                     }
 
-                    // Update account information with newly confirmed block
-                    // If the linked_account is also watched, automatically receive it (this is an internal pool<>wallet transaction, so we can safely receive!)
                     let message: JsonConfirmation =
                         serde_json::from_value(v["message"].clone()).unwrap();
-                    let account = &wsc.watched_accounts[&message.account];
-                    match message.block.subtype {
-                        Some(s) if s == "receive".to_string() => {
-                            account.lock().unwrap().refresh_account_info();
-                        }
-                        Some(s) if s == "send".to_string() => {
-                            account.lock().unwrap().refresh_account_info();
-                        }
-                        _ => {
-                            panic!("WS error: didnt find a valid block subtype in confirmation message?");
-                        }
+                        
+                    // Update the block sender info upon confirmation
+                    match &wsc.watched_accounts.entry(message.account) {
+                        Vacant(_) => {},
+                        Occupied(entry) => {entry.get().clone().lock().unwrap().refresh_account_info();}
                     }
+
+                    // Receive incoming send blocks to watched linked accounts
                     let linked_account = &wsc.watched_accounts.get(&message.block.link_as_account);
                     match linked_account {
                         Some(account) => {
-                            account.lock().unwrap().receive_all();
+                            account.lock().unwrap().receive_block(message.hash, message.amount)
                         }
                         None => {}
                     }

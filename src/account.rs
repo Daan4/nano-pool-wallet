@@ -94,7 +94,7 @@ impl Account {
             let pending_blocks = rpc_accounts_pending(
                 self.rpc_tx.clone(),
                 vec![self.address()],
-                1,
+                100, // todo make setting?
                 Some(0),
                 Some(true),
                 None,
@@ -108,49 +108,56 @@ impl Account {
                 return;
             }
 
-            for (_, pending_blocks) in pending_blocks {
+            for (_, pending_blocks) in &pending_blocks {
                 for send_block in pending_blocks {
-                    let block: Block;
-                    match self.confirmation_height {
-                        0 => {
-                            block = rpc_block_create(
-                                self.rpc_tx.clone(),
-                                "0".to_owned(),
-                                self.address.clone(),
-                                self.address.clone(),
-                                send_block.amount.unwrap(),
-                                send_block.hash,
-                                self.private_key(),
-                            )
-                            .unwrap();
-                        }
-                        _ => {
-                            block = rpc_block_create(
-                                self.rpc_tx.clone(),
-                                self.frontier.clone(),
-                                self.address.clone(),
-                                self.address.clone(),
-                                self.balance + send_block.amount.unwrap(),
-                                send_block.hash,
-                                self.private_key(),
-                            )
-                            .unwrap();
-                        }
-                    }
-                    let hash = rpc_process(self.rpc_tx.clone(), SUBTYPE::RECEIVE, block).unwrap();
-                    self.balance += send_block.amount.unwrap();
-                    self.frontier_confirmed = false;
-                    self.frontier = hash;
+                    self.receive_block(send_block.hash.to_owned(), send_block.amount.unwrap());
                 }
             }
         }
     }
 
-    /// Receive a specific amount once (0 = any amount)
+    /// Receive a send block to this account
+    pub fn receive_block(&mut self, hash: String, amount: Raw) {
+        let receive_block: Block;
+        match self.confirmation_height {
+            0 => {
+                receive_block = rpc_block_create(
+                    self.rpc_tx.clone(),
+                    "0".to_owned(),
+                    self.address.clone(),
+                    self.address.clone(),
+                    amount,
+                    hash,
+                    self.private_key(),
+                )
+                .unwrap();
+            }
+            _ => {
+                receive_block = rpc_block_create(
+                    self.rpc_tx.clone(),
+                    self.frontier.clone(),
+                    self.address.clone(),
+                    self.address.clone(),
+                    self.balance + amount,
+                    hash,
+                    self.private_key(),
+                )
+                .unwrap();
+            }
+        }
+        let hash = rpc_process(self.rpc_tx.clone(), SUBTYPE::RECEIVE, receive_block).unwrap();
+        self.balance += amount;
+        self.frontier_confirmed = false;
+        self.frontier = hash;
+    }
+
+    /// Receive some amount of Raw once (0 = any amount)
     /// Times out if not received within TRANSACTION_TIMEOUT
-    pub fn receive_specific(&self, amount: Raw) -> Result<(), String> {
+    pub fn receive_amount(&self, amount: Raw) -> Result<(), String> {
         Ok(())
     }
+
+
 
     /// Send some amount of Raw to another nano address
     pub fn send(&mut self, amount: Raw, destination: Address) -> Result<(), String> {
@@ -179,38 +186,42 @@ impl Account {
         }
     }
 
-    /// Refund any remaining balance
-    pub fn refund(&self) {}
-
     /// Get the account seed as a string
     pub fn seed(&self) -> String {
         bytes_to_hexstring(&self.seed)
     }
 
+    /// Get the account seed as a bytes array
     pub fn seed_as_bytes(&self) -> Seed {
         self.seed
     }
 
+    /// Get the account index
     pub fn index(&self) -> u32 {
         self.index
     }
 
+    /// Get the account address
     pub fn address(&self) -> Address {
         self.address.clone()
     }
 
+    /// Get the account private key
     pub fn private_key(&self) -> String {
         bytes_to_hexstring(self.private_key.as_bytes())
     }
 
+    /// Get the account public key
     pub fn public_key(&self) -> String {
         bytes_to_hexstring(self.public_key.as_bytes())
     }
 
+    /// Get the account balance
     pub fn balance(&self) -> Raw {
         self.balance
     }
 
+    /// Check if the account frontier block is confirmed
     pub fn frontier_confirmed(&self) -> bool {
         self.frontier_confirmed
     }

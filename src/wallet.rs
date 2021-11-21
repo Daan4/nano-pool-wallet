@@ -29,14 +29,17 @@ impl Wallet {
         }
     }
 
+    /// Get wallet account seed as string
     pub fn seed(&self) -> String {
         bytes_to_hexstring(&self.seed)
     }
 
+    /// Get a reference to the wallet account
     pub fn account(&self) -> Arc<Mutex<Account>> {
         self.account.clone()
     }
 
+    /// Get a reference to the wallet account pool
     pub fn pool(&self) -> &Pool {
         &self.pool
     }
@@ -58,7 +61,7 @@ impl Wallet {
             let mut pool_account = pool_account_arc.lock().unwrap();
             // println!("Attempting send from {}", pool_account.address());
             account.send(amount, pool_account.address())?;
-            pool_account.receive_specific(amount)?;
+            pool_account.receive_amount(amount)?;
             pool_account.send(amount, destination)?;
             self.pool.return_account(pool_account_arc_clone);
             Ok(())
@@ -75,7 +78,7 @@ impl Wallet {
         //     amount,
         //     pool_account.address()
         // );
-        pool_account.receive_specific(amount)?;
+        pool_account.receive_amount(amount)?;
         let account = self.account.lock().unwrap();
         pool_account.send(amount, account.address())?;
         self.pool.return_account(pool_account_arc_clone);
@@ -92,5 +95,11 @@ impl Wallet {
     pub fn receive_all_direct(&self) {
         let mut account = self.account.lock().unwrap();
         account.receive_all();
+    }
+
+    /// Receive some amount of Raw coming directly to the main account
+    pub fn receive_amount_direct(&self, amount: Raw) {
+        let mut account = self.account.lock().unwrap();
+        account.receive_amount(amount);
     }
 }
