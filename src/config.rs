@@ -11,6 +11,7 @@ pub struct Config {
     pub node_rpc_port: u16,
     pub node_ws_port: u16,
     pub representative: Address,
+    pub transaction_timeout: u32,
 }
 
 pub fn get_config() -> Config {

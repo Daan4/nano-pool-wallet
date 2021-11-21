@@ -59,7 +59,14 @@ impl Pool {
     }
 
     /// Return a used account to the free pool after a transaction
+    /// If there is any balance remaining on it sweep it to the main wallet account
     pub fn return_account(&mut self, account: Arc<Mutex<Account>>) {
+        let mut acc = account.lock().unwrap();
+        let balance = acc.balance();
+        if balance > 0 {
+            acc.send(balance, self.wallet_address.clone()).unwrap();
+        }
+        drop(acc);
         self.free.push_back(account)
     }
 
