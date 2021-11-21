@@ -13,5 +13,5 @@ node_ws_port = 17078
 # transaction timeout in seconds
 transaction_timeout = 300
 
-# representative
-representative = ""
+# representative, change this
+representative = "nano_1b9wguhh39at8qtm93oghd6r4f4ubk7zmqc9oi5ape6yyz4s1gamuwn3jjit"

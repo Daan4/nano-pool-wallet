@@ -10,6 +10,7 @@ pub struct Config {
     pub node_address: String,
     pub node_rpc_port: u16,
     pub node_ws_port: u16,
+    pub representative: Address,
 }
 
 pub fn get_config() -> Config {

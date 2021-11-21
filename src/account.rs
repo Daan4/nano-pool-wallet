@@ -14,6 +14,7 @@ use crate::rpc::*;
 use crate::seed::Seed;
 use crate::unit::Raw;
 use crate::ws::WsSubscription;
+use crate::config;
 
 pub struct Account {
     seed: Seed,
@@ -26,6 +27,7 @@ pub struct Account {
     frontier_confirmed: bool,
     confirmation_height: u64,
     rpc_tx: Sender<RpcCommand>,
+    representative: Address,
 }
 
 impl Account {
@@ -71,6 +73,7 @@ impl Account {
                 .parse::<u64>()
                 .unwrap(),
             rpc_tx,
+            representative: config::get_config().representative
         };
 
         // Watch account with websocket client, waits until ws subscription/update is acked
@@ -125,7 +128,7 @@ impl Account {
                     self.rpc_tx.clone(),
                     "0".to_owned(),
                     self.address.clone(),
-                    self.address.clone(),
+                    self.representative.clone(),
                     amount,
                     hash,
                     self.private_key(),
@@ -137,7 +140,7 @@ impl Account {
                     self.rpc_tx.clone(),
                     self.frontier.clone(),
                     self.address.clone(),
-                    self.address.clone(),
+                    self.representative.clone(),
                     self.balance + amount,
                     hash,
                     self.private_key(),
@@ -163,7 +166,7 @@ impl Account {
                 self.rpc_tx.clone(),
                 self.frontier.clone(),
                 self.address.clone(),
-                self.address.clone(),
+                self.representative.clone(),
                 self.balance - amount,
                 destination,
                 self.private_key(),
