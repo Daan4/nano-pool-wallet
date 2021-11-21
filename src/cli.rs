@@ -1,4 +1,5 @@
 use std::thread;
+use log::info;
 use std::io::{stdin, stdout, Write};
 use std::process;
 
@@ -100,6 +101,7 @@ impl CliClient {
     }
 
     fn execute_command(&mut self, cmd: Command) -> Result<(), String> {
+        info!("CLI exec {:?}", cmd);
         match cmd {
             Command::SendDirect(address, amount) => self.send_direct(address, amount),
             Command::SendPayment(address, amount) => self.send_payment(address, amount),

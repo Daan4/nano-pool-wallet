@@ -8,7 +8,7 @@ use time;
 
 static LOGGER: Logger = Logger;
 
-const LOGFILE_COUNT: usize = 5;
+const LOGFILE_COUNT: usize = 6;
 const LOGFILES: [LogFile; LOGFILE_COUNT] = [
     LogFile {
         path: "log/rpc.log",
@@ -34,6 +34,11 @@ const LOGFILES: [LogFile; LOGFILE_COUNT] = [
         path: "log/error.log",
         level: Level::Error,
         targets: ["", "", ""],
+    },
+    LogFile {
+        path: "log/cli.log",
+        level: Level::Info,
+        targets: ["nano_pool::cli", "", ""],
     },
 ];
 
