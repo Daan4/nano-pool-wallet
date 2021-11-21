@@ -88,7 +88,7 @@ impl Account {
         account
     }
 
-    /// Receive all pending blocks
+    /// Receie all pending blocks
     pub fn receive_all(&mut self) {
         loop {
             let pending_blocks = rpc_accounts_pending(
@@ -150,14 +150,6 @@ impl Account {
         self.frontier_confirmed = false;
         self.frontier = hash;
     }
-
-    /// Receive some amount of Raw once (0 = any amount)
-    /// Times out if not received within TRANSACTION_TIMEOUT
-    pub fn receive_amount(&self, amount: Raw) -> Result<(), String> {
-        Ok(())
-    }
-
-
 
     /// Send some amount of Raw to another nano address
     pub fn send(&mut self, amount: Raw, destination: Address) -> Result<(), String> {
@@ -272,7 +264,7 @@ impl Account {
     }
 
     /// Fetch balance and pending balance for address
-    fn fetch_balance(rpc_tx: Sender<RpcCommand>, address: &Address) -> (Raw, Raw) {
+    pub fn fetch_balance(rpc_tx: Sender<RpcCommand>, address: &Address) -> (Raw, Raw) {
         let json = rpc_account_balance(rpc_tx, address).unwrap();
         (json.balance, json.pending)
     }

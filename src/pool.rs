@@ -14,20 +14,23 @@ pub struct Pool {
     seed: Seed,
     rpc_tx: Sender<RpcCommand>,
     ws_tx: Sender<WsSubscription>,
+    wallet_address: Address,
 }
 
 impl Pool {
-    pub fn new(seed: Seed, rpc_tx: Sender<RpcCommand>, ws_tx: Sender<WsSubscription>) -> Pool {
+    pub fn new(seed: Seed, rpc_tx: Sender<RpcCommand>, ws_tx: Sender<WsSubscription>, wallet_address: Address) -> Pool {
         Pool {
             free: VecDeque::with_capacity(2 ^ 32 - 1),
-            index: 0,
+            index: 1,
             seed,
             rpc_tx,
             ws_tx,
+            wallet_address,
         }
     }
 
     /// Get a free account to use for a transaction
+    /// If there is any balance remaining on it sweep it to the main wallet account
     pub fn get_account(&mut self) -> Arc<Mutex<Account>> {
         match self.free.pop_front() {
             Some(account) => account,
@@ -39,20 +42,20 @@ impl Pool {
                     self.ws_tx.clone(),
                 );
                 self.index += 1;
+                let mut acc = account.lock().unwrap();
+                let balance = acc.balance();
+                if balance > 0 {
+                    acc.send(balance, self.wallet_address.clone()).unwrap();
+                }
+                drop(acc);
                 account
             }
         }
     }
 
     /// Return a used account to the free pool after a transaction
-    /// If there is remaining balance on a pool account after a transaction it should be refunded
     pub fn return_account(&mut self, account: Arc<Mutex<Account>>) {
-        let account_arc = account.clone();
-        let account = account.lock().unwrap();
-        if account.balance() > 0 {
-            account.refund();
-        }
-        self.free.push_back(account_arc)
+        self.free.push_back(account)
     }
 
     /// Get the account adress at a given index

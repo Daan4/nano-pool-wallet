@@ -1,5 +1,8 @@
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
+use log::info;
+use std::thread;
+use std::time::Duration;
 
 use crate::account::Account;
 use crate::address::Address;
@@ -20,10 +23,11 @@ pub struct Wallet {
 
 impl Wallet {
     pub fn new(seed: Seed, rpc_tx: Sender<RpcCommand>, ws_tx: Sender<WsSubscription>) -> Wallet {
+        let account = Account::new(seed, 0, rpc_tx.clone(), ws_tx.clone());
         Wallet {
             seed,
-            account: Account::new(seed, 0, rpc_tx.clone(), ws_tx.clone()),
-            pool: Pool::new(seed, rpc_tx.clone(), ws_tx.clone()),
+            account: account.clone(),
+            pool: Pool::new(seed, rpc_tx.clone(), ws_tx.clone(), account.clone().lock().unwrap().address()),
             rpc_tx,
             ws_tx,
         }
@@ -45,11 +49,12 @@ impl Wallet {
     }
 
     /// Send an amount of nano from the wallet to a destination through the pool
+    /// > send_payment nano_3qy8738374rbpc37sna1mb5hu8in7rbfapagba6gthsdnyrarf7457er5f39 1000000000000000000000000000
     pub fn send_payment(&mut self, amount: Raw, destination: Address) -> Result<(), String> {
         let mut account = self.account.lock().unwrap();
         if amount == 0 {
             Err("Cannot send 0 raw".to_string())
-        } else if amount < account.balance() {
+        } else if account.balance() < amount {
             Err(format!(
                 "Cannot send {} raw because the main account only holds {}",
                 amount,
@@ -58,10 +63,20 @@ impl Wallet {
         } else {
             let pool_account_arc = self.pool.get_account();
             let pool_account_arc_clone = pool_account_arc.clone();
-            let mut pool_account = pool_account_arc.lock().unwrap();
-            // println!("Attempting send from {}", pool_account.address());
+            let pool_account = pool_account_arc.lock().unwrap();
             account.send(amount, pool_account.address())?;
-            pool_account.receive_amount(amount)?;
+            drop(account);
+            
+            let mut balance = 0;
+            let address = &pool_account.address();
+            drop(pool_account);            
+            while balance < amount {
+                // todo non polling solution?
+                thread::sleep(Duration::from_millis(1000));
+                let (b, _) = Account::fetch_balance(self.rpc_tx.clone(), address);
+                balance = b;
+            }
+            let mut pool_account = pool_account_arc.lock().unwrap();
             pool_account.send(amount, destination)?;
             self.pool.return_account(pool_account_arc_clone);
             Ok(())
@@ -70,18 +85,18 @@ impl Wallet {
 
     /// Receive some amount of nano through the pool (0 = any amount)
     pub fn receive_payment(&mut self, amount: Raw) -> Result<(), String> {
-        let pool_account_arc = self.pool.get_account();
-        let pool_account_arc_clone = pool_account_arc.clone();
-        let mut pool_account = pool_account_arc.lock().unwrap();
-        // println!(
-        //     "Attempting to receive {} raw on {}",
-        //     amount,
-        //     pool_account.address()
-        // );
-        pool_account.receive_amount(amount)?;
-        let account = self.account.lock().unwrap();
-        pool_account.send(amount, account.address())?;
-        self.pool.return_account(pool_account_arc_clone);
+        // let pool_account_arc = self.pool.get_account();
+        // let pool_account_arc_clone = pool_account_arc.clone();
+        // let mut pool_account = pool_account_arc.lock().unwrap();
+        // // println!(
+        // //     "Attempting to receive {} raw on {}",
+        // //     amount,
+        // //     pool_account.address()
+        // // );
+        // pool_account.receive_amount(amount)?;
+        // let account = self.account.lock().unwrap();
+        // pool_account.send(amount, account.address())?;
+        // self.pool.return_account(pool_account_arc_clone);
         Ok(())
     }
 
@@ -95,11 +110,5 @@ impl Wallet {
     pub fn receive_all_direct(&self) {
         let mut account = self.account.lock().unwrap();
         account.receive_all();
-    }
-
-    /// Receive some amount of Raw coming directly to the main account
-    pub fn receive_amount_direct(&self, amount: Raw) {
-        let mut account = self.account.lock().unwrap();
-        account.receive_amount(amount);
     }
 }
