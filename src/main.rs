@@ -1,6 +1,7 @@
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
 
+use nano_pool::cli::CliClient;
 use nano_pool::common;
 use nano_pool::config::get_config;
 use nano_pool::config::Config;
@@ -8,7 +9,6 @@ use nano_pool::logger;
 use nano_pool::rpc::{RpcClient, RpcCommand};
 use nano_pool::wallet::Wallet;
 use nano_pool::ws::{WsClient, WsSubscription};
-use nano_pool::cli::CliClient;
 
 fn main() {
     let cfg = get_config();
@@ -25,7 +25,7 @@ fn main() {
     start_cli_client(wallet);
 
     // Halt; rpc, ws, cli threads still run
-    loop {}    
+    loop {}
 }
 
 fn start_rpc_client(cfg: &Config) -> Sender<RpcCommand> {

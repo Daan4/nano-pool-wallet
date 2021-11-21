@@ -2,8 +2,8 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use serde_aux::prelude::*;
 use serde_json::{json, Value};
-use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::collections::HashMap;
 use std::net::TcpStream;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
@@ -211,19 +211,22 @@ impl WsClient {
 
                     let message: JsonConfirmation =
                         serde_json::from_value(v["message"].clone()).unwrap();
-                        
+
                     // Update the block sender info upon confirmation
                     match &wsc.watched_accounts.entry(message.account) {
-                        Vacant(_) => {},
-                        Occupied(entry) => {entry.get().clone().lock().unwrap().refresh_account_info();}
+                        Vacant(_) => {}
+                        Occupied(entry) => {
+                            entry.get().clone().lock().unwrap().refresh_account_info();
+                        }
                     }
 
                     // Receive incoming send blocks to watched linked accounts
                     let linked_account = &wsc.watched_accounts.get(&message.block.link_as_account);
                     match linked_account {
-                        Some(account) => {
-                            account.lock().unwrap().receive_block(message.hash, message.amount)
-                        }
+                        Some(account) => account
+                            .lock()
+                            .unwrap()
+                            .receive_block(message.hash, message.amount),
                         None => {}
                     }
                 }

@@ -196,7 +196,7 @@ pub fn rpc_accounts_pending(
     let (tx, rx) = mpsc::channel::<Value>();
     let cmd = RpcCommand::new(message, tx);
     rpc_tx.send(cmd).unwrap();
-    
+
     let response: JsonAccountsPendingResponse = serde_json::from_value(rx.recv().unwrap()).unwrap();
     let mut output: HashMap<Address, Vec<PendingBlock>> = HashMap::new();
     for account in response.blocks.keys() {

@@ -1,11 +1,11 @@
-use std::thread;
 use log::info;
 use std::io::{stdin, stdout, Write};
 use std::process;
+use std::thread;
 
-use crate::wallet::Wallet;
-use crate::unit::Raw;
 use crate::address::Address;
+use crate::unit::Raw;
+use crate::wallet::Wallet;
 
 /// CLI commands
 #[derive(Debug, PartialEq)]
@@ -21,7 +21,7 @@ enum Command {
     /// Display help
     Help,
     /// Undefined command
-    Undefined
+    Undefined,
 }
 
 pub struct CliClient {
@@ -30,7 +30,7 @@ pub struct CliClient {
 
 impl CliClient {
     pub fn start(wallet: Wallet) {
-        let mut cli = Self{ wallet };
+        let mut cli = Self { wallet };
 
         thread::Builder::new()
             .name("cli".to_owned())
@@ -70,8 +70,8 @@ impl CliClient {
                 } else {
                     match split[2].to_owned().parse::<Raw>() {
                         Err(_) => Command::Undefined,
-                        Ok(raw) => Command::SendDirect(split[1].to_owned(), raw)
-                    }                    
+                        Ok(raw) => Command::SendDirect(split[1].to_owned(), raw),
+                    }
                 }
             }
             "send_payment" => {
@@ -80,8 +80,8 @@ impl CliClient {
                 } else {
                     match split[2].to_owned().parse::<Raw>() {
                         Err(_) => Command::Undefined,
-                        Ok(raw) => Command::SendPayment(split[1].to_owned(), raw)
-                    }    
+                        Ok(raw) => Command::SendPayment(split[1].to_owned(), raw),
+                    }
                 }
             }
             "receive_payment" => {
@@ -90,8 +90,8 @@ impl CliClient {
                 } else {
                     match split[1].to_owned().parse::<Raw>() {
                         Err(_) => Command::Undefined,
-                        Ok(raw) => Command::ReceivePayment(raw)
-                    }    
+                        Ok(raw) => Command::ReceivePayment(raw),
+                    }
                 }
             }
             "exit" => Command::Exit,
@@ -108,7 +108,9 @@ impl CliClient {
             Command::ReceivePayment(amount) => self.receive_payment(amount),
             Command::Exit => process::exit(0),
             Command::Help => CliClient::print_help(),
-            Command::Undefined => Err("Invalid command; type 'help' to see valid commands".to_owned()),
+            Command::Undefined => {
+                Err("Invalid command; type 'help' to see valid commands".to_owned())
+            }
         }
     }
 
@@ -124,7 +126,7 @@ impl CliClient {
     fn receive_payment(&mut self, amount: Raw) -> Result<(), String> {
         self.wallet.receive_payment(amount)
     }
-    
+
     fn print_help() -> Result<(), String> {
         println!("<send_direct <nano_address> <amount_in_raw> -- Send raw from the wallet account directly to a nano address");
         println!("<send_payment <nano_address> <amount_in_raw> -- Send raw from the wallet account via the account pool");
@@ -154,8 +156,14 @@ mod tests {
             Command::SendDirect("Arg1".to_owned(), 123)
         );
         assert_eq!(CliClient::process_input("send_direct"), Command::Undefined);
-        assert_eq!(CliClient::process_input("send_direct Arg1"), Command::Undefined);
-        assert_eq!(CliClient::process_input("send_direct Arg1 Arg2"), Command::Undefined);
+        assert_eq!(
+            CliClient::process_input("send_direct Arg1"),
+            Command::Undefined
+        );
+        assert_eq!(
+            CliClient::process_input("send_direct Arg1 Arg2"),
+            Command::Undefined
+        );
 
         assert_eq!(
             CliClient::process_input("send_payment Arg1 123"),
@@ -170,8 +178,14 @@ mod tests {
             Command::SendPayment("Arg1".to_owned(), 123)
         );
         assert_eq!(CliClient::process_input("send_payment"), Command::Undefined);
-        assert_eq!(CliClient::process_input("send_payment Arg1"), Command::Undefined);
-        assert_eq!(CliClient::process_input("send_payment Arg1 Arg2"), Command::Undefined);
+        assert_eq!(
+            CliClient::process_input("send_payment Arg1"),
+            Command::Undefined
+        );
+        assert_eq!(
+            CliClient::process_input("send_payment Arg1 Arg2"),
+            Command::Undefined
+        );
 
         assert_eq!(
             CliClient::process_input("receive_payment 123"),
@@ -185,19 +199,34 @@ mod tests {
             CliClient::process_input("receive_payment 123 junk data here"),
             Command::ReceivePayment(123)
         );
-        assert_eq!(CliClient::process_input("receive_payment"), Command::Undefined);
-        assert_eq!(CliClient::process_input("receive_payment Arg1"), Command::Undefined);
+        assert_eq!(
+            CliClient::process_input("receive_payment"),
+            Command::Undefined
+        );
+        assert_eq!(
+            CliClient::process_input("receive_payment Arg1"),
+            Command::Undefined
+        );
 
         assert_eq!(CliClient::process_input("exit"), Command::Exit);
         assert_eq!(CliClient::process_input("Exit"), Command::Exit);
-        assert_eq!(CliClient::process_input("exit and some more stuff"), Command::Exit);
+        assert_eq!(
+            CliClient::process_input("exit and some more stuff"),
+            Command::Exit
+        );
 
         assert_eq!(CliClient::process_input("help"), Command::Help);
         assert_eq!(CliClient::process_input("Help"), Command::Help);
-        assert_eq!(CliClient::process_input("help and some more stuff"), Command::Help);
+        assert_eq!(
+            CliClient::process_input("help and some more stuff"),
+            Command::Help
+        );
 
         assert_eq!(CliClient::process_input(""), Command::Undefined);
-        assert_eq!(CliClient::process_input("thisisnotacommand"), Command::Undefined);
+        assert_eq!(
+            CliClient::process_input("thisisnotacommand"),
+            Command::Undefined
+        );
         assert_eq!(
             CliClient::process_input("This Is Also Not A Command!"),
             Command::Undefined

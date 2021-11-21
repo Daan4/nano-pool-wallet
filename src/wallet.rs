@@ -1,6 +1,5 @@
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
-use log::info;
 use std::thread;
 use std::time::Duration;
 
@@ -18,7 +17,6 @@ pub struct Wallet {
     account: Arc<Mutex<Account>>,
     pool: Pool,
     rpc_tx: Sender<RpcCommand>,
-    ws_tx: Sender<WsSubscription>,
 }
 
 impl Wallet {
@@ -27,9 +25,13 @@ impl Wallet {
         Wallet {
             seed,
             account: account.clone(),
-            pool: Pool::new(seed, rpc_tx.clone(), ws_tx.clone(), account.clone().lock().unwrap().address()),
-            rpc_tx,
-            ws_tx,
+            pool: Pool::new(
+                seed,
+                rpc_tx.clone(),
+                ws_tx.clone(),
+                account.clone().lock().unwrap().address(),
+            ),
+            rpc_tx
         }
     }
 
@@ -66,10 +68,10 @@ impl Wallet {
             let pool_account = pool_account_arc.lock().unwrap();
             account.send(amount, pool_account.address())?;
             drop(account);
-            
+
             let mut balance = 0;
             let address = &pool_account.address();
-            drop(pool_account);            
+            drop(pool_account);
             while balance < amount {
                 // todo non polling solution?
                 thread::sleep(Duration::from_millis(1000));

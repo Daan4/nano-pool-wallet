@@ -18,7 +18,12 @@ pub struct Pool {
 }
 
 impl Pool {
-    pub fn new(seed: Seed, rpc_tx: Sender<RpcCommand>, ws_tx: Sender<WsSubscription>, wallet_address: Address) -> Pool {
+    pub fn new(
+        seed: Seed,
+        rpc_tx: Sender<RpcCommand>,
+        ws_tx: Sender<WsSubscription>,
+        wallet_address: Address,
+    ) -> Pool {
         Pool {
             free: VecDeque::with_capacity(2 ^ 32 - 1),
             index: 1,
