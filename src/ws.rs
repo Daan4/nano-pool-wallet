@@ -9,6 +9,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+use std::sync::mpsc;
 use websocket::client::sync::Client;
 use websocket::message::OwnedMessage;
 use websocket::{ClientBuilder, Message};
@@ -17,6 +18,15 @@ use crate::account::Account;
 use crate::address::Address;
 use crate::block::Block;
 use crate::unit::Raw;
+use crate::config::Config;
+
+// start websocket interface
+pub fn start_ws(cfg: &Config) -> Sender<WsSubscription> {
+    let url = format!("ws://{}:{}", cfg.node_address, cfg.node_ws_port);
+    let (ws_tx, ws_rx) = mpsc::channel::<WsSubscription>();
+    WsClient::start(url, ws_rx);
+    ws_tx
+}
 
 pub struct WsSubscription {
     account: Arc<Mutex<Account>>,
@@ -216,7 +226,7 @@ impl WsClient {
                     match &wsc.watched_accounts.entry(message.account) {
                         Vacant(_) => {}
                         Occupied(entry) => {
-                            entry.get().clone().lock().unwrap().refresh_account_info();
+                            entry.get().clone().lock().unwrap().update_info();
                         }
                     }
 

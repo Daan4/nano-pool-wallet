@@ -41,7 +41,8 @@ const LOGFILES: [LogFile; LOGFILE_COUNT] = [
     },
 ];
 
-pub fn init() -> Result<(), SetLoggerError> {
+/// Start logger
+pub fn start_logger() -> Result<(), SetLoggerError> {
     // Create and empty log files for session
     for log in LOGFILES {
         log.init();

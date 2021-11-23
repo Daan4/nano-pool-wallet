@@ -2,10 +2,22 @@ use log::info;
 use std::io::{stdin, stdout, Write};
 use std::process;
 use std::thread;
+use std::sync::mpsc::Sender;
 
 use crate::address::Address;
 use crate::unit::Raw;
 use crate::wallet::Wallet;
+use crate::config::Config;
+use crate::common;
+use crate::rpc::RpcCommand;
+use crate::ws::WsSubscription;
+
+/// Start command line interface
+pub fn start_cli(cfg: &Config, rpc_tx: Sender<RpcCommand>, ws_tx: Sender<WsSubscription>) {
+    let seed = common::hexstring_to_bytes(&cfg.wallet_seed);
+    let wallet = Wallet::new(seed, rpc_tx.clone(), ws_tx.clone());
+    CliClient::start(wallet);
+}
 
 /// CLI commands
 #[derive(Debug, PartialEq)]

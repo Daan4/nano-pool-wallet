@@ -13,6 +13,15 @@ use crate::address::Address;
 use crate::block::Block;
 use crate::skip_fail;
 use crate::unit::Raw;
+use crate::config::Config;
+
+// start remote procedure call interface
+pub fn start_rpc(cfg: &Config) -> Sender<RpcCommand> {
+    let url = format!("{}:{}", cfg.node_address, cfg.node_rpc_port);
+    let (rpc_tx, rpc_rx) = mpsc::channel::<RpcCommand>();
+    RpcClient::start(url, rpc_rx);
+    rpc_tx
+}
 
 pub struct RpcCommand {
     cmd: Value,
