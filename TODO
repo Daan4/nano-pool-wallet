@@ -1,0 +1,64 @@
+split tests into node required / no node required suites
+
+large test coverage
+
+allow concurrent transactions
+
+poll periodically for receiving (ws bugs?)
+
+properly handle confirmed vs non confirmed frontiers, right now a ws confirmation can reset account head back to confirmed frontier! -> what does this mean?
+
+time out ws if not receiving sub/update ack on time
+
+write tests
+
+all type aliases (address / seed) etc to structs? (only accept valid formats?)
+
+error / unwrap handling
+
+get rid of some dependencies with own implementations / std libs
+
+support all rpc calls and params (and then turn rpc into a standalone crate)
+
+support all ws (and then turn ws into a standalone crate)
+
+publish as docker image
+
+rest api
+
+open pull request on blake2b version of ed22519 
+
+more settings like: auto-sweep, pool accounts looping/caps/scrambling, auto-refund
+
+gui
+
+use/implement block sign function for self signing (instead of nano_node signing)
+
+visualization
+
+allow scheduled / recurring transactions
+
+locking/unlocking seed > could precache scheduled/recurring send blocks to still send them out
+
+fix  <-- deserialize_option_number_from_string is broken
+
+automatic refunds (when?)
+
+add multiple unit support (nano/raw/nyano)
+
+move some stuff to config settings (Categorize settings)
+
+cli up / down arrow for cycling through commands
+
+option to randomize indices (require tracking of indices, or in given index)
+
+generic function to sweep indexes / range / set
+
+replace polling by instant feedback from ws, or vice versa where only one option is implemented currently
+
+parallelize cli calls 
+
+macros:
+	Can you represent the desired functionality in pure Rust? yes
+	Is the existing syntax overly verbose? yes
+	This is a candidate for a macro.
