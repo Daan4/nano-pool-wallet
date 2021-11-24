@@ -89,7 +89,7 @@ impl Account {
         // If there is pending balance, receive it first
         if pending > 0 {
             account.lock().unwrap().receive_all();
-            Account::await_confirmation(rpc_tx, address);
+            Account::await_confirmation(rpc_tx, address).expect("Confirmation timeout");
         }
 
         account
@@ -331,7 +331,7 @@ impl Account {
 
     /// Block until account frontier block is confirmed (for sends) and all pending balance received or timeout expires
     pub fn await_confirmation(rpc_tx: Sender<RpcCommand>, address: Address) -> Result<(), String> {
-        /// move confirmation timeout to config
+        // move confirmation timeout to config
         let transaction_timeout =
             config::get_config("config/config.toml").transaction_timeout * 1000;
         thread::sleep(Duration::from_millis(500));
@@ -353,6 +353,37 @@ impl Account {
                 );
                 return Err(format!(
                     "Timed out awaiting account frontier confirmation for {}",
+                    address
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// Block until an account has reached a given minimum balance and all pending balance received or timeout expires
+    pub fn await_minimum_balance(rpc_tx: Sender<RpcCommand>, address: Address, desired_balance: Raw) -> Result<(), String> {
+        // move confirmation timeout to config
+        let transaction_timeout =
+            config::get_config("config/config.toml").transaction_timeout * 1000;
+        thread::sleep(Duration::from_millis(500));
+        let info = Account::fetch_info(rpc_tx.clone(), &address);
+        let mut confirmed_balance = info.confirmed_balance.unwrap().parse::<Raw>().unwrap();
+        let mut total_duration: u32 = 500;
+        while confirmed_balance < desired_balance {
+            // todo non polling solution?
+            thread::sleep(Duration::from_millis(500));
+            let info = Account::fetch_info(rpc_tx.clone(), &address);
+            confirmed_balance = info.confirmed_balance.unwrap().parse::<Raw>().unwrap();
+            total_duration += 500;
+            if total_duration >= transaction_timeout {
+                info!(
+                    "ACCOUNT timed out awaiting desired confirmed balance of {} for {}",
+                    desired_balance,
+                    address
+                );
+                return Err(format!(
+                    "Timed out awaiting desired confirmed balance of {} for {}",
+                    desired_balance,
                     address
                 ));
             }
@@ -509,7 +540,7 @@ mod tests {
         // Receive single block
         assert!(dev_account.lock().unwrap().send(1, address.clone()).is_ok());
         assert!(Account::await_confirmation(rpc_tx.clone(), dev_address.clone()).is_ok());
-        assert!(Account::await_confirmation(rpc_tx.clone(), address.clone()).is_ok());
+        assert!(Account::await_minimum_balance(rpc_tx.clone(), address.clone(), 7).is_ok());
         assert!(account.lock().unwrap().frontier_confirmed());
         assert_eq!(account.lock().unwrap().balance(), 7);
         assert_eq!(account.lock().unwrap().confirmation_height(), 4);
