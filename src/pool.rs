@@ -26,7 +26,7 @@ impl Pool {
     ) -> Pool {
         Pool {
             free: VecDeque::with_capacity(2 ^ 32 - 1),
-            index: 1,
+            index: 1,  // Index starts at once, so the wallet address can use index 0 if desired
             seed,
             rpc_tx,
             ws_tx,
@@ -69,11 +69,51 @@ impl Pool {
         drop(acc);
         self.free.push_back(account)
     }
+}
 
-    /// Get the account adress at a given index
-    pub fn get_account_address(&self, index: u32) -> Address {
-        let private_key = Account::derive_private_key(self.seed, index);
-        let public_key = Account::derive_public_key(private_key);
-        Account::derive_address(public_key)
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::get_config;
+    use crate::logger::start_logger;
+    use crate::rpc::start_rpc;
+    use crate::ws::start_ws;
+    use crate::common::generate_random_seed_address;
+
+    #[test]
+    fn pool_no_node_required() {
+        let cfg = get_config("config/config_test.toml");
+        start_logger().unwrap();
+        let rpc_tx = start_rpc(&cfg);
+        let ws_tx = start_ws(&cfg);
+        let (seed, address) = generate_random_seed_address();
+        let mut pool = Pool::new(seed, rpc_tx, ws_tx, address);
+
+        let a1 = pool.get_account();
+        let a2 = pool.get_account();
+        let a3 = pool.get_account();
+
+        assert_eq!(a1.lock().unwrap().index(), 1);
+        assert_eq!(a2.lock().unwrap().index(), 2);
+        assert_eq!(a3.lock().unwrap().index(), 3);
+
+        pool.return_account(a2);
+        pool.return_account(a1);
+        assert_eq!(pool.free.len(), 2);
+
+        let a2 = pool.get_account();
+        let a1 = pool.get_account();
+        let a4 = pool.get_account();
+        assert_eq!(pool.free.len(), 0);
+
+        assert_eq!(a1.lock().unwrap().index(), 1);
+        assert_eq!(a2.lock().unwrap().index(), 2);
+        assert_eq!(a4.lock().unwrap().index(), 4);
+
+        pool.return_account(a1);
+        pool.return_account(a2);
+        pool.return_account(a3);
+        pool.return_account(a4);
+        assert_eq!(pool.free.len(), 4);
     }
 }
