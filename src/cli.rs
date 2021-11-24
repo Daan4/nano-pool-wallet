@@ -154,7 +154,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn cli_process_input() {
+    fn cli_process_input_no_node_required() {
         assert_eq!(
             CliClient::process_input("send_direct Arg1 123"),
             Command::SendDirect("Arg1".to_owned(), 123)

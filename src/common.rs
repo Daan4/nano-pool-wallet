@@ -1,7 +1,10 @@
 use bitvec::prelude::*;
 use once_cell::sync::Lazy;
+use rand::Rng;
 
 use crate::seed::Seed;
+use crate::address::Address;
+use crate::account::Account;
 
 const HEX: [&str; 16] = [
     "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F",
@@ -59,4 +62,17 @@ pub fn encode_nano_base_32(bits: &BitSlice<Msb0, u8>) -> String {
         s.push(char);
     }
     s
+}
+
+/// Generate a random seed and address (index 0)
+pub fn generate_random_seed_address() -> (Seed, Address) {
+    let mut rng = rand::thread_rng();
+    let mut seed: Seed = [0; 32];
+    for i in 0..32 {
+        seed[i] = rng.gen_range(0..16) << 4 | rng.gen_range(0..16);
+    }
+    let private_key = Account::derive_private_key(seed, 0);
+    let public_key = Account::derive_public_key(private_key);
+    let address = Account::derive_address(public_key);
+    (seed, address)
 }

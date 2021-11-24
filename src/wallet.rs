@@ -95,7 +95,7 @@ impl Wallet {
 
         let mut balance = 0;
         let address = &pool_account.address();
-        let transaction_timeout = get_config().transaction_timeout * 1000;
+        let transaction_timeout = get_config("config/config.toml").transaction_timeout * 1000;
         let mut total_duration: u32 = 0;
         drop(pool_account);
         info!("WALLET receiving {} on {}", amount, address);

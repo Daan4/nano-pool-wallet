@@ -337,7 +337,7 @@ struct JsonAccountInfoMessage {
     include_confirmed: Option<bool>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, PartialEq, Debug)]
 pub struct JsonAccountInfoResponse {
     pub frontier: String,
     pub confirmed_frontier: Option<String>,
@@ -345,7 +345,7 @@ pub struct JsonAccountInfoResponse {
     pub representative_block: String,
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub balance: Raw,
-    //#[serde(deserialize_with = "deserialize_option_number_from_string")] <-- deserialize_option_number_from_string is broken
+    // #[serde(deserialize_with = "deserialize_option_number_from_string")] //<-- deserialize_option_number_from_string is broken
     pub confirmed_balance: Option<String>,
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub modified_timestamp: u64,

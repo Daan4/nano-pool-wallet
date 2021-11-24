@@ -5,7 +5,7 @@ use nano_pool::cli::start_cli;
 use nano_pool::logger::start_logger;
 
 fn main() {
-    let cfg = get_config("config/Config.toml");
+    let cfg = get_config("config/config.toml");
     start_logger().unwrap();
     let rpc_tx = start_rpc(&cfg);
     let ws_tx = start_ws(&cfg);

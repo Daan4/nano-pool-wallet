@@ -14,9 +14,9 @@ pub struct Config {
     pub transaction_timeout: u32,
 }
 
-pub fn get_config() -> Config {
+pub fn get_config(path: &str) -> Config {
     let contents =
-        fs::read_to_string("config/Config.toml").expect("Something went wrong reading the file");
+        fs::read_to_string(path).expect("Something went wrong reading the file");
 
     toml::from_str(&contents).unwrap()
 }

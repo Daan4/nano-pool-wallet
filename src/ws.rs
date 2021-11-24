@@ -40,14 +40,6 @@ impl WsSubscription {
             tx_response,
         }
     }
-
-    pub fn account(&self) -> Arc<Mutex<Account>> {
-        self.account.clone()
-    }
-
-    pub fn confirm(&self) {
-        self.tx_response.send(()).unwrap();
-    }
 }
 
 pub struct WsClient {
