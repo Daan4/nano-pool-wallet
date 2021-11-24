@@ -1,18 +1,18 @@
+use log::info;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use log::info;
 
 use crate::account::Account;
 use crate::address::Address;
 use crate::common::bytes_to_hexstring;
+use crate::config::get_config;
 use crate::pool::Pool;
 use crate::rpc::RpcCommand;
 use crate::seed::Seed;
 use crate::unit::Raw;
 use crate::ws::WsSubscription;
-use crate::config::get_config;
 
 pub struct Wallet {
     seed: Seed,
@@ -33,7 +33,7 @@ impl Wallet {
                 ws_tx.clone(),
                 account.clone().lock().unwrap().address(),
             ),
-            rpc_tx
+            rpc_tx,
         }
     }
 
@@ -108,7 +108,7 @@ impl Wallet {
             if total_duration >= transaction_timeout {
                 info!("WALLET timed out receiving {} on {}", amount, address);
                 self.pool.return_account(pool_account_arc.clone());
-                return Err("Timed out awaiting payment".to_owned())
+                return Err("Timed out awaiting payment".to_owned());
             }
         }
         let mut pool_account = pool_account_arc.lock().unwrap();

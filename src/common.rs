@@ -2,9 +2,9 @@ use bitvec::prelude::*;
 use once_cell::sync::Lazy;
 use rand::Rng;
 
-use crate::seed::Seed;
-use crate::address::Address;
 use crate::account::Account;
+use crate::address::Address;
+use crate::seed::Seed;
 
 const HEX: [&str; 16] = [
     "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F",

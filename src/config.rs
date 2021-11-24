@@ -15,8 +15,7 @@ pub struct Config {
 }
 
 pub fn get_config(path: &str) -> Config {
-    let contents =
-        fs::read_to_string(path).expect("Something went wrong reading the file");
+    let contents = fs::read_to_string(path).expect("Something went wrong reading the file");
 
     toml::from_str(&contents).unwrap()
 }

@@ -1,15 +1,15 @@
 use log::info;
 use std::io::{stdin, stdout, Write};
 use std::process;
-use std::thread;
 use std::sync::mpsc::Sender;
+use std::thread;
 
 use crate::address::Address;
+use crate::common;
+use crate::config::Config;
+use crate::rpc::RpcCommand;
 use crate::unit::Raw;
 use crate::wallet::Wallet;
-use crate::config::Config;
-use crate::common;
-use crate::rpc::RpcCommand;
 use crate::ws::WsSubscription;
 
 /// Start command line interface

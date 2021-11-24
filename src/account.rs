@@ -2,22 +2,22 @@ use bitvec::prelude::*;
 use blake2b_simd::{Hash, Params};
 use byteorder::{BigEndian, WriteBytesExt};
 use ed25519_dalek::{PublicKey, SecretKey};
+use log::info;
 use std::iter::FromIterator;
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use log::info;
 
 use crate::address::Address;
 use crate::block::Block;
 use crate::common::{bytes_to_hexstring, encode_nano_base_32};
+use crate::config;
 use crate::rpc::*;
 use crate::seed::Seed;
 use crate::unit::Raw;
 use crate::ws::WsSubscription;
-use crate::config;
 
 pub struct Account {
     seed: Seed,
@@ -76,21 +76,21 @@ impl Account {
                 .parse::<u64>()
                 .unwrap(),
             rpc_tx: rpc_tx.clone(),
-            representative: config::get_config("config/config.toml").representative
+            representative: config::get_config("config/config.toml").representative,
         };
-        let account = Arc::new(Mutex::new(account));  
+        let account = Arc::new(Mutex::new(account));
 
         // Watch account with websocket client, waits until ws subscription/update is acked
         let (tx, rx) = mpsc::channel::<()>();
         let sub = WsSubscription::new(account.clone(), tx);
         ws_tx.send(sub).unwrap();
         rx.recv().unwrap();
-        
+
         // If there is pending balance, receive it first
         if pending > 0 {
             account.lock().unwrap().receive_all();
             Account::await_confirmation(rpc_tx, address);
-        }  
+        }
 
         account
     }
@@ -332,7 +332,8 @@ impl Account {
     /// Block until account frontier block is confirmed (for sends) and all pending balance received or timeout expires
     pub fn await_confirmation(rpc_tx: Sender<RpcCommand>, address: Address) -> Result<(), String> {
         /// move confirmation timeout to config
-        let transaction_timeout = config::get_config("config/config.toml").transaction_timeout * 1000;
+        let transaction_timeout =
+            config::get_config("config/config.toml").transaction_timeout * 1000;
         thread::sleep(Duration::from_millis(500));
         let info = Account::fetch_info(rpc_tx.clone(), &address);
         let mut balance = info.balance;
@@ -346,8 +347,14 @@ impl Account {
             confirmed_balance = info.confirmed_balance.unwrap().parse::<Raw>().unwrap();
             total_duration += 500;
             if total_duration >= transaction_timeout {
-                info!("ACCOUNT timed out awaiting frontier confirmation for {}", address);
-                return Err(format!("Timed out awaiting account frontier confirmation for {}", address))
+                info!(
+                    "ACCOUNT timed out awaiting frontier confirmation for {}",
+                    address
+                );
+                return Err(format!(
+                    "Timed out awaiting account frontier confirmation for {}",
+                    address
+                ));
             }
         }
         Ok(())
@@ -359,9 +366,9 @@ mod tests {
     use super::*;
     use crate::common::{generate_random_seed_address, hexstring_to_bytes};
     use crate::config::get_config;
+    use crate::logger::start_logger;
     use crate::rpc::start_rpc;
     use crate::ws::start_ws;
-    use crate::logger::start_logger;
 
     #[test]
     fn account_key_derivations_no_node_required() {
@@ -427,50 +434,67 @@ mod tests {
         let (seed, address) = generate_random_seed_address();
 
         // Unopened account info
-        assert_eq!(Account::fetch_info(rpc_tx.clone(), &address), JsonAccountInfoResponse {
-            frontier: "".to_owned(),
-            confirmed_frontier: Some("".to_owned()),
-            open_block: "".to_owned(),
-            representative_block: "".to_owned(),
-            balance: 0,
-            confirmed_balance: Some("0".to_owned()),
-            modified_timestamp: 0,
-            block_count: 0,
-            account_version: "".to_owned(),
-            confirmation_height: None,
-            confirmed_height: Some("0".to_owned()),
-            confirmation_height_frontier: None,
-        });
-        
-        // Fund test account from a dev account with available balance 
-        let dev_account = Account::new(hexstring_to_bytes(&cfg.wallet_seed), 0, rpc_tx.clone(), ws_tx.clone());
+        assert_eq!(
+            Account::fetch_info(rpc_tx.clone(), &address),
+            JsonAccountInfoResponse {
+                frontier: "".to_owned(),
+                confirmed_frontier: Some("".to_owned()),
+                open_block: "".to_owned(),
+                representative_block: "".to_owned(),
+                balance: 0,
+                confirmed_balance: Some("0".to_owned()),
+                modified_timestamp: 0,
+                block_count: 0,
+                account_version: "".to_owned(),
+                confirmation_height: None,
+                confirmed_height: Some("0".to_owned()),
+                confirmation_height_frontier: None,
+            }
+        );
+
+        // Fund test account from a dev account with available balance
+        let dev_account = Account::new(
+            hexstring_to_bytes(&cfg.wallet_seed),
+            0,
+            rpc_tx.clone(),
+            ws_tx.clone(),
+        );
         let dev_address = dev_account.lock().unwrap().address();
-        
+
         assert!(dev_account.lock().unwrap().send(1, address.clone()).is_ok());
         assert!(dev_account.lock().unwrap().send(2, address.clone()).is_ok());
         assert!(dev_account.lock().unwrap().send(3, address.clone()).is_ok());
         assert!(Account::await_confirmation(rpc_tx.clone(), dev_address.clone()).is_ok());
 
         // Check unopened account
-        assert_eq!(Account::fetch_balance(rpc_tx.clone(), &address.clone()), (0, 6));
-        assert_eq!(Account::fetch_info(rpc_tx.clone(), &address.clone()), JsonAccountInfoResponse {
-            frontier: "".to_owned(),
-            confirmed_frontier: Some("".to_owned()),
-            open_block: "".to_owned(),
-            representative_block: "".to_owned(),
-            balance: 0,
-            confirmed_balance: Some("0".to_owned()),
-            modified_timestamp: 0,
-            block_count: 0,
-            account_version: "".to_owned(),
-            confirmation_height: None,
-            confirmed_height: Some("0".to_owned()),
-            confirmation_height_frontier: None,
-        });
+        assert_eq!(
+            Account::fetch_balance(rpc_tx.clone(), &address.clone()),
+            (0, 6)
+        );
+        assert_eq!(
+            Account::fetch_info(rpc_tx.clone(), &address.clone()),
+            JsonAccountInfoResponse {
+                frontier: "".to_owned(),
+                confirmed_frontier: Some("".to_owned()),
+                open_block: "".to_owned(),
+                representative_block: "".to_owned(),
+                balance: 0,
+                confirmed_balance: Some("0".to_owned()),
+                modified_timestamp: 0,
+                block_count: 0,
+                account_version: "".to_owned(),
+                confirmation_height: None,
+                confirmed_height: Some("0".to_owned()),
+                confirmation_height_frontier: None,
+            }
+        );
 
         // Open new account & receive multiple blocks)
         let account = Account::new(seed, 0, rpc_tx.clone(), ws_tx.clone());
-        assert_eq!(Account::fetch_balance(rpc_tx.clone(), &address.clone()), (6, 0));
+        assert_eq!(
+            Account::fetch_balance(rpc_tx.clone(), &address.clone()),
+            (6, 0)
+        );
         assert!(account.lock().unwrap().frontier_confirmed());
         assert_eq!(account.lock().unwrap().balance(), 6);
         assert_eq!(account.lock().unwrap().confirmation_height(), 3);

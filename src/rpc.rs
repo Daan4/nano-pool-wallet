@@ -11,9 +11,9 @@ use std::thread;
 
 use crate::address::Address;
 use crate::block::Block;
+use crate::config::Config;
 use crate::skip_fail;
 use crate::unit::Raw;
-use crate::config::Config;
 
 // start remote procedure call interface
 pub fn start_rpc(cfg: &Config) -> Sender<RpcCommand> {

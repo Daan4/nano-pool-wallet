@@ -5,11 +5,11 @@ use serde_json::{json, Value};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::collections::HashMap;
 use std::net::TcpStream;
+use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use std::sync::mpsc;
 use websocket::client::sync::Client;
 use websocket::message::OwnedMessage;
 use websocket::{ClientBuilder, Message};
@@ -17,8 +17,8 @@ use websocket::{ClientBuilder, Message};
 use crate::account::Account;
 use crate::address::Address;
 use crate::block::Block;
-use crate::unit::Raw;
 use crate::config::Config;
+use crate::unit::Raw;
 
 // start websocket interface
 pub fn start_ws(cfg: &Config) -> Sender<WsSubscription> {
