@@ -1,7 +1,7 @@
 # wallet seed, change this
 wallet_seed = "0000000000000000000000000000000000000000000000000000000000000000"
 
-# node address
+# node IP address
 node_address = "127.0.0.1"
 
 # node rpc port
