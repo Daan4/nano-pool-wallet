@@ -1,16 +1,28 @@
 split tests into node required / no node required suites
 
+review output for account test
+
 large test coverage
+
+review / refactor lock().unwrap()
+
+replace cloning by references?
 
 allow concurrent transactions
 
 poll periodically for receiving (ws bugs?)
+
+send payments based on some spreadhseet (via rest api?)
+
+get rid of the polling mechanisms for event-based ones
 
 properly handle confirmed vs non confirmed frontiers, right now a ws confirmation can reset account head back to confirmed frontier! -> what does this mean?
 
 time out ws if not receiving sub/update ack on time
 
 write tests
+
+handle timeouts (long confirmations)
 
 all type aliases (address / seed) etc to structs? (only accept valid formats?)
 
