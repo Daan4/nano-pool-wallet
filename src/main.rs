@@ -6,7 +6,7 @@ use nano_pool::ws::start_ws;
 
 fn main() {
     let cfg = get_config("config/config.toml");
-    start_logger().unwrap();
+    start_logger();
     let rpc_tx = start_rpc(&cfg);
     let ws_tx = start_ws(&cfg);
     start_cli(&cfg, rpc_tx, ws_tx);

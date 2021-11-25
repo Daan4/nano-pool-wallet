@@ -459,7 +459,7 @@ mod tests {
     #[test]
     fn account() {
         let cfg = get_config("config/config_test.toml");
-        start_logger().unwrap();
+        start_logger();
         let rpc_tx = start_rpc(&cfg);
         let ws_tx = start_ws(&cfg);
         let (seed, address) = generate_random_seed_address();

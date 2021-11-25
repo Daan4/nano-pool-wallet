@@ -1,4 +1,4 @@
-use log::{Level, LevelFilter, Log, Metadata, Record, SetLoggerError};
+use log::{Level, LevelFilter, Log, Metadata, Record};
 use std::fs;
 use std::fs::File;
 use std::io::Write;
@@ -42,14 +42,14 @@ const LOGFILES: [LogFile; LOGFILE_COUNT] = [
 ];
 
 /// Start logger
-pub fn start_logger() -> Result<(), SetLoggerError> {
+pub fn start_logger() {
     // Create and empty log files for session
     for log in LOGFILES {
         log.init();
     }
 
     // Set up logger
-    log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Info))
+   let _ = log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Info));
 }
 
 struct LogFile {
