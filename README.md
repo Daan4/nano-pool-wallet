@@ -27,11 +27,11 @@ A free pool account is reserved, if no free account exists a new one will be gen
 A free pool account is reserved, if no free account exists a new one will be generated. The reserved pool account address should be shared with the sender. As soon as the specified amount is received it is sent to the main account and the pool account will be freed. If the amount is not received within a given time a timeout will occur and the pool account is freed.
 
 ## Dev Environment Setup on Windows using WSL2 / Docker
-Personally I use VSC with the Remote - WSL extension to run it in WSL2. The node container runs in WSL2, and the work server runs on the Windows host. The nano node is ran in a private dev network, where the genesis account is set up as the node rep wallet. ()
+Personally I use VSC with the Remote - WSL extension to run it in WSL2. The node container runs in WSL2, and the work server runs on the Windows host. The nano node is ran in a private dev network, where the genesis account is set up as the node rep wallet. (https://nanojson.medium.com/how-to-set-up-a-single-nano-dev-network-node-568f6a09978)
 
 1. Install WSL2 (https://docs.microsoft.com/en-us/windows/wsl/install)
 
-2. Install Docker Desktop and setup the WSL2 backend (https://docs.docker.com/desktop/windows/wsl/)
+2. Install Docker Desktop arrrrrrrrrrnd setup the WSL2 backend (https://docs.docker.com/desktop/windows/wsl/)
 
 3. Allow WSL2 through the Windows firewall to connect with the Windows host (required to communicate with the work server, or to use the main/beta/test networks instead of the dev network)
 
