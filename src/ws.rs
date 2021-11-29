@@ -17,12 +17,12 @@ use websocket::{ClientBuilder, Message};
 use crate::account::Account;
 use crate::address::Address;
 use crate::block::Block;
-use crate::config::Config;
+use crate::config::CONFIG;
 use crate::unit::Raw;
 
 // start websocket interface
-pub fn start_ws(cfg: &Config) -> Sender<WsSubscription> {
-    let url = format!("ws://{}:{}", cfg.node_address, cfg.node_ws_port);
+pub fn start_ws() -> Sender<WsSubscription> {
+    let url = format!("ws://{}:{}", CONFIG.node_address, CONFIG.node_ws_port);
     let (ws_tx, ws_rx) = mpsc::channel::<WsSubscription>();
     WsClient::start(url, ws_rx);
     ws_tx

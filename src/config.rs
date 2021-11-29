@@ -1,8 +1,17 @@
 use serde::Deserialize;
-use std::fs;
+use std::{fs, env::VarError};
 use toml;
+use lazy_static::lazy_static;
+use std::env;
 
 use crate::address::Address;
+
+lazy_static! {
+    pub static ref CONFIG: Config = Config::new();
+}
+
+static TEST_CONFIG_PATH: &str = "config/config_test.toml";
+static PROD_CONFIG_PATH: &str = "config/config.toml";
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -14,8 +23,19 @@ pub struct Config {
     pub transaction_timeout: u32,
 }
 
-pub fn get_config(path: &str) -> Config {
-    let contents = fs::read_to_string(path).expect("Something went wrong reading the file");
-
-    toml::from_str(&contents).unwrap()
+impl Config {
+    fn new() -> Self {
+        let path;
+        match env::var("RUST_ENV") {
+            Ok(v) => {
+                match v.as_str() {
+                    "TEST" => path = TEST_CONFIG_PATH,
+                    _ => path = PROD_CONFIG_PATH
+                }
+            },
+            Err(_) => path = PROD_CONFIG_PATH
+        }
+        let contents = fs::read_to_string(path).expect("Something went wrong reading the file");
+        toml::from_str(&contents).unwrap()
+    }
 }

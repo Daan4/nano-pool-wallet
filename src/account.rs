@@ -13,7 +13,7 @@ use std::time::Duration;
 use crate::address::Address;
 use crate::block::Block;
 use crate::common::{bytes_to_hexstring, encode_nano_base_32};
-use crate::config;
+use crate::config::CONFIG;
 use crate::rpc::*;
 use crate::seed::Seed;
 use crate::unit::Raw;
@@ -50,7 +50,7 @@ impl Account {
         let address = Self::derive_address(public_key);
 
         // Fetch pending balance
-        let (_, pending) = Self::fetch_balance(rpc_tx.clone(), &address);
+        let (balance, pending) = Self::fetch_balance(rpc_tx.clone(), &address);
 
         // Fetch account info
         let account_info = Self::fetch_info(rpc_tx.clone(), &address);
@@ -63,11 +63,7 @@ impl Account {
             private_key,
             public_key,
             address: address.clone(),
-            balance: account_info
-                .confirmed_balance
-                .unwrap()
-                .parse::<Raw>()
-                .unwrap(),
+            balance,
             frontier,
             frontier_confirmed,
             confirmation_height: account_info
@@ -76,7 +72,7 @@ impl Account {
                 .parse::<u64>()
                 .unwrap(),
             rpc_tx: rpc_tx.clone(),
-            representative: config::get_config("config/config.toml").representative,
+            representative: CONFIG.representative.clone(),
         };
         let account = Arc::new(Mutex::new(account));
 
@@ -89,6 +85,11 @@ impl Account {
         // If there is pending balance, receive it first
         if pending > 0 {
             account.lock().unwrap().receive_all();
+            Account::await_confirmation(rpc_tx.clone(), address.clone()).expect("Confirmation timeout");
+        }
+
+        // Block until account is fully confirmed in case there were unconfirmed send/receive blocks (shouldnt happen normally?)
+        if account_info.balance != account_info.confirmed_balance.unwrap().parse::<Raw>().unwrap() {
             Account::await_confirmation(rpc_tx, address).expect("Confirmation timeout");
         }
 
@@ -333,7 +334,7 @@ impl Account {
     pub fn await_confirmation(rpc_tx: Sender<RpcCommand>, address: Address) -> Result<(), String> {
         // move confirmation timeout to config
         let transaction_timeout =
-            config::get_config("config/config.toml").transaction_timeout * 1000;
+            CONFIG.transaction_timeout * 1000;
         thread::sleep(Duration::from_millis(500));
         let info = Account::fetch_info(rpc_tx.clone(), &address);
         let mut balance = info.balance;
@@ -364,7 +365,7 @@ impl Account {
     pub fn await_minimum_balance(rpc_tx: Sender<RpcCommand>, address: Address, desired_balance: Raw) -> Result<(), String> {
         // move confirmation timeout to config
         let transaction_timeout =
-            config::get_config("config/config.toml").transaction_timeout * 1000;
+            CONFIG.transaction_timeout * 1000;
         thread::sleep(Duration::from_millis(500));
         let info = Account::fetch_info(rpc_tx.clone(), &address);
         let mut confirmed_balance = info.confirmed_balance.unwrap().parse::<Raw>().unwrap();
@@ -396,7 +397,7 @@ impl Account {
 mod tests {
     use super::*;
     use crate::common::{generate_random_seed_address, hexstring_to_bytes};
-    use crate::config::get_config;
+    use crate::config::CONFIG;
     use crate::logger::start_logger;
     use crate::rpc::start_rpc;
     use crate::ws::start_ws;
@@ -458,10 +459,9 @@ mod tests {
 
     #[test]
     fn account() {
-        let cfg = get_config("config/config_test.toml");
         start_logger();
-        let rpc_tx = start_rpc(&cfg);
-        let ws_tx = start_ws(&cfg);
+        let rpc_tx = start_rpc();
+        let ws_tx = start_ws();
         let (seed, address) = generate_random_seed_address();
 
         // Unopened account info
@@ -485,7 +485,7 @@ mod tests {
 
         // Fund test account from a dev account with available balance
         let dev_account = Account::new(
-            hexstring_to_bytes(&cfg.wallet_seed),
+            hexstring_to_bytes(&CONFIG.wallet_seed),
             0,
             rpc_tx.clone(),
             ws_tx.clone(),
@@ -532,7 +532,7 @@ mod tests {
         assert_eq!(account.lock().unwrap().seed_as_bytes(), seed);
         assert_eq!(account.lock().unwrap().address(), address);
         assert_eq!(account.lock().unwrap().index(), 0);
-        assert_eq!(account.lock().unwrap().representative(), cfg.representative);
+        assert_eq!(account.lock().unwrap().representative(), CONFIG.representative);
 
         // Send more than available balance
         assert!(account.lock().unwrap().send(7, address.clone()).is_err());

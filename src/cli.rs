@@ -6,15 +6,15 @@ use std::thread;
 
 use crate::address::Address;
 use crate::common;
-use crate::config::Config;
+use crate::config::CONFIG;
 use crate::rpc::RpcCommand;
 use crate::unit::Raw;
 use crate::wallet::Wallet;
 use crate::ws::WsSubscription;
 
 /// Start command line interface
-pub fn start_cli(cfg: &Config, rpc_tx: Sender<RpcCommand>, ws_tx: Sender<WsSubscription>) {
-    let seed = common::hexstring_to_bytes(&cfg.wallet_seed);
+pub fn start_cli(rpc_tx: Sender<RpcCommand>, ws_tx: Sender<WsSubscription>) {
+    let seed = common::hexstring_to_bytes(&CONFIG.wallet_seed);
     let wallet = Wallet::new(seed, rpc_tx.clone(), ws_tx.clone());
     CliClient::start(wallet);
 }

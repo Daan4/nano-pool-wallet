@@ -74,7 +74,7 @@ impl Pool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::get_config;
+    use crate::config::CONFIG;
     use crate::logger::start_logger;
     use crate::rpc::start_rpc;
     use crate::ws::start_ws;
@@ -82,10 +82,9 @@ mod tests {
 
     #[test]
     fn pool_no_node_required() {
-        let cfg = get_config("config/config_test.toml");
         start_logger();
-        let rpc_tx = start_rpc(&cfg);
-        let ws_tx = start_ws(&cfg);
+        let rpc_tx = start_rpc();
+        let ws_tx = start_ws();
         let (seed, address) = generate_random_seed_address();
         let mut pool = Pool::new(seed, rpc_tx, ws_tx, address);
 

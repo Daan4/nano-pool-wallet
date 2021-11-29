@@ -98,11 +98,11 @@ cargo run
 ## Run all tests
 
 ```bash
-cargo test
+RUST_ENV=TEST cargo test
 ```
 
 ## Run tests that don't require a node
 
 ```bash
-cargo test no_node_required
+RUST_ENV=TEST cargo test no_node_required
 ```

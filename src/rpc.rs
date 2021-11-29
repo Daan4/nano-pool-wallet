@@ -11,13 +11,13 @@ use std::thread;
 
 use crate::address::Address;
 use crate::block::Block;
-use crate::config::Config;
+use crate::config::CONFIG;
 use crate::skip_fail;
 use crate::unit::Raw;
 
 // start remote procedure call interface
-pub fn start_rpc(cfg: &Config) -> Sender<RpcCommand> {
-    let url = format!("{}:{}", cfg.node_address, cfg.node_rpc_port);
+pub fn start_rpc() -> Sender<RpcCommand> {
+    let url = format!("{}:{}", CONFIG.node_address, CONFIG.node_rpc_port);
     let (rpc_tx, rpc_rx) = mpsc::channel::<RpcCommand>();
     RpcClient::start(url, rpc_rx);
     rpc_tx
