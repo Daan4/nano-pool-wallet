@@ -70,6 +70,8 @@ replace polling by instant feedback from ws, or vice versa where only one option
 
 parallelize cli calls 
 
+scheduled/periodic payments
+
 macros:
 	Can you represent the desired functionality in pure Rust? yes
 	Is the existing syntax overly verbose? yes
