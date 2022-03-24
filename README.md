@@ -64,7 +64,7 @@ docker restart nano-dev
 ```toml
 # In config-node.toml
 # Note that the vEthernet ip changes every time windows is restarted as of writing
-node.work_peers = ["::ffff:<vEthernet Default Switch ip>:1000"]
+node.work_peers = ["::ffff:<vEthernet WSL ip>:1000"]
 node.work_threads = 0
 node.websocket.address = "::ffff:0.0.0.0"
 node.websocket.enable = true
@@ -79,7 +79,7 @@ enable_control = true
 6. Run nano work server (https://github.com/nanocurrency/nano-work-server)
 
 ```powershell
-.\nano-work-server.exe --gpu 0:0 --listen-address <vEthernet Default Switch ip>:1000
+.\nano-work-server.exe --gpu 0:0 --listen-address <vEthernet WSL ip>:1000
 ```
 
 7. Set up the node representative. After this Nault or RPC can be used to fund dev / test accounts from the genesis account.
